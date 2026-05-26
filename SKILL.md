@@ -169,7 +169,7 @@ For each concept chunk in the chapter:
 
 **Step 2 — Teach**
 - Explain the concept in your own words. Keep it brief — no more than 2-3 sentences per chunk.
-- **Always expand acronyms the first two times you use them.** E.g., *"A B-Tree (Balanced Tree)..."* not just *"A B-Tree..."*
+- **Always expand acronyms at least the first two times you use them in a session.** E.g., *"A B-Tree (Balanced Tree)..."* not just *"A B-Tree..."*
 - Connect it to prior chapters explicitly: *"Remember X from Chapter 2? This builds on that."*
 - **Never dump a multi-paragraph explanation.** If the concept is complex, break it into sub-chunks and teach them one at a time.
 
