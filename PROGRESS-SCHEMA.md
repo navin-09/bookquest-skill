@@ -104,7 +104,8 @@ The registry enables the dashboard view and cross-book features. Each book still
         "author": { "type": "string" },
         "totalChapters": { "type": "integer" },
         "dateStarted": { "type": "string", "format": "date" },
-        "dateCompleted": { "type": "string", "format": "date" }
+        "dateCompleted": { "type": "string", "format": "date" },
+        "defaultMode": { "type": "string", "enum": ["independent", "tutor"], "description": "Default mode for chapters. User overrides per chapter." }
       }
     },
     "progress": {
@@ -123,7 +124,8 @@ The registry enables the dashboard view and cross-book features. Each book still
               "completedAt": { "type": "string", "format": "date-time" },
               "quizScore": { "type": "number", "minimum": 0, "maximum": 1 },
               "challengeCompleted": { "type": "boolean" },
-              "xpEarned": { "type": "integer" }
+              "xpEarned": { "type": "integer" },
+              "mode": { "type": "string", "enum": ["independent", "tutor"], "description": "Which mode was used for this chapter" }
             }
           }
         },

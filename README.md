@@ -34,7 +34,7 @@ cp -r bookquest-skill ~/.pi/agent/skills/bookquest
 /bookquest
 ```
 
-Then provide your book (file path or URL) and start reading. Type `/bookquest` again to end the session.
+Then provide your book (file path or URL) and start reading. Or say *"teach me Chapter 3"* to switch to **Tutor Mode** — the agent reads the book and teaches you interactively. Type `/bookquest` again to end the session.
 
 ## How It Works
 
@@ -43,6 +43,10 @@ Then provide your book (file path or URL) and start reading. Type `/bookquest` a
   │
   ├─ Phase 1: Reconnaissance (first time)
   │    Skill scans your book, builds a skill tree, sets up tracking.
+  │
+  ├─ You choose a mode:
+  │    ├─ Independent-Reading: You read, the agent quizzes you.
+  │    └─ Tutor Mode: The agent reads the book and teaches you.
   │
   ├─ Phase 2: Reading Loop (every session)
   │    1. Load progress + show streak/XP
