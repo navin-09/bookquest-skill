@@ -1,0 +1,39 @@
+{
+  "name": "bookquest-skill",
+  "version": "1.0.0",
+  "description": "Gamified interactive reading companion for tech books. XP, levels, streaks, skill trees, boss fights, and Socratic teaching — never summaries.",
+  "license": "MIT",
+  "author": "",
+  "keywords": [
+    "agent-skill",
+    "pi-skill",
+    "bookquest",
+    "reading",
+    "gamification",
+    "socratic",
+    "tech-books",
+    "learning",
+    "xp",
+    "education"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/<your-username>/bookquest-skill.git"
+  },
+  "bugs": {
+    "url": "https://github.com/<your-username>/bookquest-skill/issues"
+  },
+  "homepage": "https://github.com/<your-username>/bookquest-skill#readme",
+  "files": [
+    "SKILL.md",
+    "TEACHING.md",
+    "CHALLENGES.md",
+    "PROGRESS-SCHEMA.md",
+    "scripts/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "init": "node scripts/init-progress.js"
+  }
+}
