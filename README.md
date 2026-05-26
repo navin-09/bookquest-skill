@@ -11,7 +11,7 @@ Tech books are hard to finish. Novels keep you hooked with cliffhangers. Tech bo
 - 🔗 **Inter-Chapter Connections** — Every chapter links to prior ones. Knowledge sticks like a novel's plot.
 - ⚔️ **Boss Fights** — End-of-section mastery challenges. Prove you know it.
 - 📊 **Progress Tracking** — Agent-agnostic JSON progress file. Switch agents, keep your progress.
-- 🚫 **No Summaries** — The skill NEVER summarizes content. You do the reading. It makes it stick.
+- 🚫 **No Summaries** — The skill never dumps summaries. In independent mode, you read and the agent quizzes. In Tutor Mode, the agent teaches you interactively. Either way, no passive text dumps.
 
 ## Quick Start
 
@@ -49,15 +49,29 @@ Then provide your book (file path or URL) and start reading. Or say *"teach me C
   │    └─ Tutor Mode: The agent reads the book and teaches you.
   │
   ├─ Phase 2: Reading Loop (every session)
-  │    1. Load progress + show streak/XP
-  │    2. Connect recap ("This builds on Chapter 3's concept of X")
-  │    3. You read the chapter
-  │    4. Core Loop:
-  │       ├─ A: Socratic Interrogation (5-8 questions, no answers)
-  │       ├─ B: Checkpoint Quiz (must pass to proceed)
-  │       ├─ C: Interactive Challenge (unlock next chapter)
-  │       └─ D: Knowledge Graph Update
-  │    5. Award XP, save progress
+  │    ├─ Choose mode per chapter:
+  │    │    ├─ 📖 Independent: You read, agent quizzes (steps 2-10 below)
+  │    │    └─ 🎓 Tutor: Agent teaches via Guided Tour (replaces steps 6-9)
+  │    │
+  │    ├─ Steps 2-5 (both modes): Show dashboard, load progress + registry, connection recap
+  │    │
+  │    ├─ Independent path (steps 6-9):
+  │    │    ├─ 6: Reading mission — agent sets questions, you read
+  │    │    ├─ 7: You read the chapter
+  │    │    ├─ 8: Core Loop:
+  │    │    │    ├─ A: Socratic Interrogation
+  │    │    │    ├─ B: Checkpoint Quiz
+  │    │    │    ├─ C: Interactive Challenge
+  │    │    │    └─ D: Knowledge Graph Update
+  │    │    └─ 9: Award XP, save progress
+  │    │
+  │    ├─ Tutor path (replaces steps 6-9):
+  │    │    ├─ Guided Tour: agent reads → teaches each concept →
+  │    │    │  checks understanding → adapts to your pace
+  │    │    ├─ Then: Checkpoint Quiz + Interactive Challenge + Knowledge Graph
+  │    │    └─ Award XP (micro-XP + completion)
+  │    │
+  │    └─ 10 (both): Offer next step
   │
   ├─ Phase 3: Boss Fights (end of sections)
   │    Comprehensive quiz + teach-back + real-world scenario.

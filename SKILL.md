@@ -101,7 +101,7 @@ These cross-book links are bonus — don't force them. Save them to the knowledg
 
 On every session after reconnaissance:
 
-1. **Choose mode** — Check the progress file for this chapter's mode. If **tutor mode**, jump to the [Guided Tour](#tutor-mode--guided-tour-flow) flow below. If independent-reading mode, continue with steps 2-9.
+1. **Choose mode** — Check the progress file for this chapter's mode. If **tutor mode**, execute steps 2-5 (dashboard, progress, registry, recap), then jump to the [Guided Tour](#tutor-mode--guided-tour-flow) flow (replaces steps 6-9). If independent-reading mode, continue with steps 2-10.
 2. **Show Dashboard** — If multiple books are active, display the dashboard and ask which book to continue. If only one book, skip to step 3.
 3. **Load progress** — Read the selected book's progress JSON. Show:
    - Total XP and level
@@ -156,7 +156,8 @@ Use this flow when a chapter is in tutor mode. The agent reads the book source a
 
 1. **Read the chapter** — Use the appropriate tool to extract text from the book source. For PDFs, extract text page by page as you go. For markdown/text files, read directly. The book source was provided during reconnaissance.
 2. **Identify concept boundaries** — Scan the chapter and identify natural breakpoints: subsection headings, distinct concepts, or key ideas. **Do not plan a summary.** Plan a tour with stops.
-3. **Set context** — Before starting, set expectations:
+3. **Display skill tree** — Show the current chapter's position in the skill tree, just as you would in independent mode. The user should always see their position in the quest.
+4. **Set context** — Before starting, set expectations:
    *"I'm going to teach you [Chapter Title] section by section. I'll explain each concept, then check you understand before moving on. You can say 'faster' or 'explain more' at any point. Ready?"*
 
 #### Guided Tour Loop (repeat per concept chunk)
@@ -187,10 +188,11 @@ For each concept chunk in the chapter:
 | Wrong direction | Don't say "no." Guide: *"Interesting. Re-read the part about [specific detail]. What stands out?"* |
 | "I don't know" | Simplify. Break into smaller sub-questions. Point to the source: *"The book says it handles [X] by [Y]. How do you think [X] works?"* |
 | "Explain more" | Dive deeper on that concept. Read the surrounding text and elaborate. |
+| User challenges the agent | *"Let me re-read that part."* Re-read the relevant source. Confirm or correct yourself. *"You're right — the book says [X]."* Never defend a wrong statement. |
 
 **Step 5 — Log concept**
-- Mentally record the concept for the knowledge graph update at the end of the chapter.
-- Note the user's confidence level based on their checkpoint answers.
+- Write the concept to the progress file's `knowledgeGraph` array incrementally (after every 2-3 chunks, not just at the end). This prevents data loss if the session is interrupted.
+- Set confidence based on the user's checkpoint answers.
 
 #### After the Tour (per chapter)
 
@@ -208,7 +210,7 @@ The user can interrupt the tour at any point with these commands:
 
 | Command | Effect |
 |---------|--------|
-| *"Faster"* / *"Speed up"* | Skip the detailed check. Just confirm comprehension and move to next chunk. |
+| *"Faster"* / *"Speed up"* | Skip the detailed check. Ask one quick closed-ended question (e.g., true/false or one key takeaway), then move to next chunk. **Does not award +5 XP** — only full-detail checkpoints earn micro-XP. |
 | *"Explain more"* / *"Go deeper"* | Read surrounding text and elaborate on the current concept. |
 | *"Let me read this one"* | Switch to independent mode for this subsection. Jump to the Core Loop when they return. |
 | *"Repeat that"* | Re-teach the last chunk from a different angle. |
@@ -222,6 +224,8 @@ The user can interrupt the tour at any point with these commands:
 - ❌ Don't rush through all chunks without checking — each chunk gets at least one check.
 - ❌ Don't skip the end-of-chapter quiz/challenge — they're still the gate to unlock the next chapter.
 - ❌ Don't teach from your own knowledge if the book source is unclear. Stick to what the book says, or say "the book doesn't cover that clearly" and move on.
+- ❌ Don't add extra explanation after a correct answer — award XP and move to the next chunk. The end-of-chapter quiz handles depth.
+- ❌ Don't rely solely on user self-assessment. If a user answers correctly but you suspect shallow understanding (one-word answers, repeated hesitation), ask one follow-up before escalating to application questions.
 
 ### Phase 3 — Boss Fights (end of major sections)
 

@@ -222,7 +222,8 @@ The registry enables the dashboard view and cross-book features. Each book still
     "slug": "ddia",
     "author": "Martin Kleppmann",
     "totalChapters": 12,
-    "dateStarted": "2026-05-26"
+    "dateStarted": "2026-05-26",
+    "defaultMode": "independent"
   },
   "progress": {
     "currentChapter": 4,
@@ -233,7 +234,8 @@ The registry enables the dashboard view and cross-book features. Each book still
         "completedAt": "2026-05-26T10:30:00Z",
         "quizScore": 0.85,
         "challengeCompleted": true,
-        "xpEarned": 65
+        "xpEarned": 65,
+        "mode": "independent"
       },
       {
         "chapter": 2,
@@ -241,7 +243,8 @@ The registry enables the dashboard view and cross-book features. Each book still
         "completedAt": "2026-05-26T14:00:00Z",
         "quizScore": 0.72,
         "challengeCompleted": true,
-        "xpEarned": 55
+        "xpEarned": 55,
+        "mode": "independent"
       },
       {
         "chapter": 3,
@@ -249,7 +252,8 @@ The registry enables the dashboard view and cross-book features. Each book still
         "completedAt": "2026-05-27T09:00:00Z",
         "quizScore": 0.90,
         "challengeCompleted": true,
-        "xpEarned": 70
+        "xpEarned": 70,
+        "mode": "independent"
       }
     ],
     "skillTree": [

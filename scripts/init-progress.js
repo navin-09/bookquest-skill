@@ -32,10 +32,10 @@ Arguments:
   book-source              File path or URL to the book
   --project                Store in .bookquest/ (default: ~/.pi/book-progress/)
   --skip-registry          Skip registry.json creation/update
-  --noninteractive         Skip prompts (use --title=, --author=, --chapters=)
+  --noninteractive         Skip prompts (use --title=, --author=, --chapters=, --defaultMode=)
 
 Examples:
-  node init-progress.js ~/books/ddia.pdf --noninteractive --title="DDIA" --chapters=12
+  node init-progress.js ~/books/ddia.pdf --noninteractive --title="DDIA" --chapters=12 --defaultMode=tutor
   node init-progress.js https://example.com/book.pdf --project --noninteractive
 `);
   process.exit(0);
@@ -98,7 +98,7 @@ fs.mkdirSync(progressDir, { recursive: true });
 (async () => {
   console.log('\n📚 BookQuest — Book Setup\n');
 
-  let title, author, totalChapters;
+  let title, author, totalChapters, defaultMode;
 
   if (noninteractive || !process.stdin.isTTY) {
     // Non-interactive or piped: derive from source
@@ -109,6 +109,8 @@ fs.mkdirSync(progressDir, { recursive: true });
     author = authorArg ? authorArg.slice(authorArg.indexOf('=') + 1) : '';
     const chaptersArg = process.argv.find(a => a.startsWith('--chapters='));
     totalChapters = parseInt(chaptersArg ? chaptersArg.slice(chaptersArg.indexOf('=') + 1) : '', 10) || 0;
+    const modeArg = process.argv.find(a => a.startsWith('--defaultMode='));
+    defaultMode = modeArg ? modeArg.slice(modeArg.indexOf('=') + 1) : 'independent';
   } else {
     // Interactive
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -116,6 +118,8 @@ fs.mkdirSync(progressDir, { recursive: true });
     title = await ask(`Book title (or Enter → "${slug}"): `) || slug;
     author = await ask('Author (optional): ') || '';
     totalChapters = parseInt(await ask('Total chapters (estimate): '), 10) || 0;
+    const modeAnswer = (await ask('Default mode (independent/tutor, Enter → independent): ')).toLowerCase();
+    defaultMode = (modeAnswer === 'tutor') ? 'tutor' : 'independent';
     rl.close();
   }
 
@@ -140,6 +144,7 @@ fs.mkdirSync(progressDir, { recursive: true });
       author,
       totalChapters,
       dateStarted: todayStr(),
+      defaultMode,
     },
     progress: {
       currentChapter: 1,

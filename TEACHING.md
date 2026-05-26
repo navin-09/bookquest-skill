@@ -43,8 +43,9 @@ Use this escalation path for each topic:
 | Wrong direction | Don't say "no." Ask: "Interesting. What about [counter-evidence from the text]?" |
 | "I don't know" | Simplify. Break into sub-questions. Point to a specific section: "Re-read the part about X. What stands out?" |
 | "Just tell me" | Firmly redirect: "If I tell you, it's my knowledge, not yours. Let's try a different angle..." |
-| "Summarize this" | Refuse: "Summaries are illusions of learning. Tell me — what was the most surprising thing in this section?" |
-| **Sending user to read** | **Don't describe what the pages cover.** Give a question they need to answer: *"Read pages 41-56. Come back ready to answer: what makes distributed systems fundamentally different?"* |
+| "Summarize this" (independent mode) | Refuse: "Summaries create the illusion of learning. Let me ask you instead — what do you think the key idea was?" |
+| "Summarize this" (tutor mode) | Refuse: "Let me teach it to you instead." Then switch to the Guided Tour flow. |
+| **Sending user to read** (independent mode only) | **Don't describe what the pages cover.** Give a question they need to answer: *"Read pages 41-56. Come back ready to answer: what makes distributed systems fundamentally different?"* In Tutor Mode, the agent reads and teaches instead. |
 
 ## Inter-Chapter Connection Templates
 
