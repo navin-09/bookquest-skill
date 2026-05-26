@@ -48,7 +48,7 @@ When `/bookquest` is typed and multiple books are active:
 📚 BookQuest Dashboard
 
 Active Quests:
-1. 🔄 Designing Data-Intensive Applications — Ch.4/12 | XP: 290 | 🔥 2-day streak
+1. 🔄 Designing Data-Intensive Applications — Ch.4/12 | XP: 290 | 🔥 5-day streak
 2. 🔄 Clean Code — Ch.7/17 | XP: 410 | 🔥 5-day streak
 3. 🔒 The Rust Book — Ch.1/20 | XP: 0 | Not started
 
@@ -194,7 +194,7 @@ Level thresholds are defined in the XP Levels table below. **The agent MUST use 
 
 ```
 $ node scripts/level-calc.js 290
-{ "xp": 290, "level": 2, "title": "📚 Chapter Runner", "xpForNextLevel": 10, "xpIntoLevel": 190 }
+{ "xp": 290, "level": 2, "title": "📚 Chapter Runner", "xpIntoLevel": 190, "xpForNextLevel": 10, "isMaxed": false }
 ```
 
 ### XP System
@@ -277,4 +277,4 @@ Display the tree at the start of each session and after each chapter completion.
 
 - [TEACHING.md](TEACHING.md) — Full Socratic method guide with question templates
 - [CHALLENGES.md](CHALLENGES.md) — Interactive challenge types and examples
-- [PROGRESS-SCHEMA.md](PROGRESS-SCHEMA.md) — Progress file JSON schema
+- [PROGRESS-SCHEMA.md](PROGRESS-SCHEMA.md) — Progress file schema + registry schema

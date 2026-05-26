@@ -23,6 +23,24 @@ const isProject  = process.argv.includes('--project');
 const skipReg    = process.argv.includes('--skip-registry');
 const noninteractive = process.argv.includes('--noninteractive');
 
+if (process.argv.includes('--help') || process.argv.includes('-h')) {
+  console.log(`Usage: node init-progress.js <book-source> [--project] [--skip-registry] [--noninteractive]
+
+Creates a BookQuest progress file and updates the multi-book registry.
+
+Arguments:
+  book-source              File path or URL to the book
+  --project                Store in .bookquest/ (default: ~/.pi/book-progress/)
+  --skip-registry          Skip registry.json creation/update
+  --noninteractive         Skip prompts (use --title=, --author=, --chapters=)
+
+Examples:
+  node init-progress.js ~/books/ddia.pdf --noninteractive --title="DDIA" --chapters=12
+  node init-progress.js https://example.com/book.pdf --project --noninteractive
+`);
+  process.exit(0);
+}
+
 if (!source) {
   console.error('Usage: node init-progress.js <book-source> [--project] [--skip-registry] [--noninteractive]');
   process.exit(1);
@@ -43,11 +61,13 @@ function generateSlug(str) {
   } else {
     base = path.basename(str);
   }
-  return base
+  let slug = base
     .replace(/\.[^.]+$/, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
+  if (!slug) slug = 'untitled-book';
+  return slug;
 }
 
 function todayStr() {
@@ -82,10 +102,13 @@ fs.mkdirSync(progressDir, { recursive: true });
 
   if (noninteractive || !process.stdin.isTTY) {
     // Non-interactive or piped: derive from source
-    title = process.argv.find(a => a.startsWith('--title='))?.split('=')[1];
+    const titleArg = process.argv.find(a => a.startsWith('--title='));
+    title = titleArg ? titleArg.slice(titleArg.indexOf('=') + 1) : undefined;
     if (!title) title = slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    author = process.argv.find(a => a.startsWith('--author='))?.split('=')[1] || '';
-    totalChapters = parseInt(process.argv.find(a => a.startsWith('--chapters='))?.split('=')[1], 10) || 0;
+    const authorArg = process.argv.find(a => a.startsWith('--author='));
+    author = authorArg ? authorArg.slice(authorArg.indexOf('=') + 1) : '';
+    const chaptersArg = process.argv.find(a => a.startsWith('--chapters='));
+    totalChapters = parseInt(chaptersArg ? chaptersArg.slice(chaptersArg.indexOf('=') + 1) : '', 10) || 0;
   } else {
     // Interactive
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -146,8 +169,8 @@ fs.mkdirSync(progressDir, { recursive: true });
     if (fs.existsSync(registryFile)) {
       try {
         registry = JSON.parse(fs.readFileSync(registryFile, 'utf-8'));
-      } catch {
-        console.log(`   ⚠  Corrupt registry, recreating.`);
+      } catch (e) {
+        console.log(`   ⚠  Corrupt registry (${e.message}), recreating.`);
       }
     }
 
@@ -171,7 +194,9 @@ fs.mkdirSync(progressDir, { recursive: true });
       if (fs.existsSync(pf)) {
         try {
           totalXp += JSON.parse(fs.readFileSync(pf, 'utf-8')).gamification?.xp ?? 0;
-        } catch { /* skip corrupted */ }
+        } catch (e) {
+          console.error(`   ⚠  Warning: skipping corrupted file ${pf}: ${e.message}`);
+        }
       }
     }
 

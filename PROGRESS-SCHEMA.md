@@ -3,7 +3,7 @@
 ## File Location
 
 - **Global**: `~/.pi/book-progress/<book-slug>.json`
-- **Per-project**: `<project>.bookquest/<book-slug>.json`
+- **Per-project**: `<project>/.bookquest/<book-slug>.json`
 
 The user chooses during reconnaissance. Default to global.
 
@@ -19,16 +19,16 @@ A single `registry.json` in the progress directory tracks all active books:
       "title": "Designing Data-Intensive Applications",
       "source": "/path/to/ddia.pdf",
       "global": true,
-      "addedAt": "2026-05-26",
-      "lastActiveAt": "2026-05-27"
+      "addedAt": "2026-05-26T10:00:00Z",
+      "lastActiveAt": "2026-05-27T14:30:00Z"
     },
     {
       "slug": "clean-code",
       "title": "Clean Code",
       "source": "/path/to/clean-code.pdf",
       "global": true,
-      "addedAt": "2026-05-25",
-      "lastActiveAt": "2026-05-27"
+      "addedAt": "2026-05-25T09:00:00Z",
+      "lastActiveAt": "2026-05-27T14:30:00Z"
     }
   ],
   "globalStats": {

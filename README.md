@@ -100,7 +100,7 @@ Progress is stored as **agent-agnostic JSON**:
 - Global: `~/.pi/book-progress/<book-slug>.json`
 - Per-project: `.bookquest/<book-slug>.json`
 
-The file tracks: chapters completed, XP, level, streak, achievements, skill tree state, and a knowledge graph of concepts + connections. Any agent that supports BookQuest can read/write it.
+The file tracks: chapters completed, XP, level, achievements, skill tree state, and a knowledge graph of concepts + connections. Any agent that supports BookQuest can read/write it.
 
 ## Multi-Book Support
 
@@ -110,7 +110,7 @@ Read as many books as you want simultaneously. Each gets its own progress file, 
 📚 BookQuest Dashboard
 
 Active Quests:
-1. 🔄 DDIA — Ch.4/12 | XP: 290 | 🔥 2-day streak
+1. 🔄 DDIA — Ch.4/12 | XP: 290 | 🔥 5-day streak
 2. 🔄 Clean Code — Ch.7/17 | XP: 410 | 🔥 5-day streak
 3. 🔒 The Rust Book — Ch.1/20 | XP: 0 | Not started
 
