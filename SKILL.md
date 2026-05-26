@@ -74,7 +74,7 @@ These cross-book links are bonus — don't force them. Save them to the knowledg
 
 1. Ask the user for the **book source**: file path, URL, or paste.
 2. Scan the table of contents.
-3. Run `scripts/init-progress.js <book-source>` to build the progress file.
+3. Run `scripts/init-progress.js <book-source> --noninteractive --title="<title>" --chapters="<N>"` to create the progress file and update the registry.
 4. Display the skill tree to the user:
    ```
    📚 BookQuest: <Book Title>
@@ -95,23 +95,18 @@ On every session after reconnaissance:
 
 1. **Show Dashboard** — If multiple books are active, display the dashboard and ask which book to continue. If only one book, skip to step 2.
 2. **Load progress** — Read the selected book's progress JSON. Show:
-   - Current streak 🔥
    - Total XP and level
    - Where they left off
-   - Nudge if streak is at risk: *"Your 5-day streak is at risk! Let's keep it alive."*
-
-2. **Connection recap** — Before new content, briefly link to prior chapters:
+3. **Load registry** — Read `registry.json` for global stats:
+   - Global streak 🔥 (nudge if at risk: *"Your 5-day streak is at risk! Let's keep it alive."*)
+   - Global XP and level across all books
+4. **Connection recap** — Before new content, briefly link to prior chapters:
    *"Last session you mastered X and Y. Today's chapter, [Title], builds directly on those. Ready?"*
-
-3. **Present the section** — Read the relevant portion of the book source. Tell the user what pages/sections to read. **DO NOT summarize.**
-
-4. **Wait for readiness** — Say: *"Read it, then tell me when you're ready to go."*
-
-5. **Run the core loop** (see below) once the user signals readiness.
-
-6. **Award XP and save** — Update the progress file. Show XP earned this session.
-
-7. **Offer next step** — *"Ready for the next chapter, switch to another book, or call it a day?"*
+5. **Present the section** — Read the relevant portion of the book source. Tell the user what pages/sections to read. **DO NOT summarize.**
+6. **Wait for readiness** — Say: *"Read it, then tell me when you're ready to go."*
+7. **Run the core loop** (see below) once the user signals readiness.
+8. **Award XP and save** — Update the progress file. Show XP earned this session.
+9. **Offer next step** — *"Ready for the next chapter, switch to another book, or call it a day?"*
 
 ### Core Loop (per chapter/section)
 
@@ -177,11 +172,11 @@ When user types `/bookquest` to exit:
    ├── Chapters covered: X
    ├── XP earned: +Y
    ├── Total XP: Z (Level N)
-   ├── Streak: 🔥 N days
    ├── Achievements unlocked: [list]
    └── Next up: [next chapter]
    ```
-3. If streak is active: *"See you tomorrow to keep your streak alive! 🔥"*
+3. Update `registry.json` — Update global streak, global XP, and `lastActiveAt` for the book.
+4. If streak is active: *"See you tomorrow to keep your streak alive! 🔥"*
 
 ## Progress File
 
@@ -192,6 +187,15 @@ See [PROGRESS-SCHEMA.md](PROGRESS-SCHEMA.md) for the full schema.
 The file is **agent-agnostic JSON** — any agent can read/write it. Users keep their progress when switching agents.
 
 ## Gamification Rules
+
+### XP Source of Truth
+
+Level thresholds are defined in the XP Levels table below. **The agent MUST use `node scripts/level-calc.js <xp>` to compute the current level** after any XP change — never calculate manually. The progress file's `gamification.level` is always the ground truth.
+
+```
+$ node scripts/level-calc.js 290
+{ "xp": 290, "level": 2, "title": "📚 Chapter Runner", "xpForNextLevel": 10, "xpIntoLevel": 190 }
+```
 
 ### XP System
 | Action | XP |

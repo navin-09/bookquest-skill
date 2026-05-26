@@ -88,6 +88,11 @@ Then provide your book (file path or URL) and start reading. Type `/bookquest` a
 - 🎯 **Perfectionist** — Score 100% on a checkpoint quiz
 - ...and more
 
+## Scripts
+
+- `scripts/init-progress.js` — Creates progress file + updates `registry.json`
+- `scripts/level-calc.js` — Computes level from XP (the agent MUST use this)
+
 ## Progress File
 
 Progress is stored as **agent-agnostic JSON**:
@@ -135,9 +140,10 @@ bookquest-skill/
 ├── SKILL.md              # Main skill instructions
 ├── TEACHING.md           # Socratic method guide
 ├── CHALLENGES.md         # Challenge types and examples
-├── PROGRESS-SCHEMA.md    # Progress file schema
+├── PROGRESS-SCHEMA.md    # Progress file schema + registry schema
 ├── scripts/
-│   └── init-progress.js  # Progress file initializer
+│   ├── init-progress.js  # Progress file + registry initializer
+│   └── level-calc.js    # XP → level calculator
 ├── package.json
 ├── README.md
 └── LICENSE

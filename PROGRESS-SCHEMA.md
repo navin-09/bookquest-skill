@@ -41,7 +41,51 @@ A single `registry.json` in the progress directory tracks all active books:
 
 The registry enables the dashboard view and cross-book features. Each book still has its own progress file for chapter-level detail.
 
-## JSON Schema
+### Registry Schema
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BookQuest Registry",
+  "type": "object",
+  "required": ["books", "globalStats"],
+  "properties": {
+    "books": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["slug", "title", "source", "addedAt", "lastActiveAt"],
+        "properties": {
+          "slug": { "type": "string", "description": "URL-safe identifier" },
+          "title": { "type": "string" },
+          "source": { "type": "string", "description": "File path or URL" },
+          "global": { "type": "boolean", "description": "True if stored in global dir, false if per-project" },
+          "addedAt": { "type": "string", "format": "date-time" },
+          "lastActiveAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "globalStats": {
+      "type": "object",
+      "required": ["totalXp", "level", "streak"],
+      "properties": {
+        "totalXp": { "type": "integer", "minimum": 0 },
+        "level": { "type": "integer", "minimum": 1 },
+        "streak": {
+          "type": "object",
+          "properties": {
+            "current": { "type": "integer", "minimum": 0 },
+            "longest": { "type": "integer", "minimum": 0 },
+            "lastSessionDate": { "type": "string", "format": "date" }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Per-Book Progress Schema
 
 ```json
 {
@@ -102,18 +146,10 @@ The registry enables the dashboard view and cross-book features. Each book still
     },
     "gamification": {
       "type": "object",
-      "required": ["xp", "level", "streak", "achievements", "sessions"],
+      "required": ["xp", "level", "achievements", "sessions"],
       "properties": {
         "xp": { "type": "integer", "minimum": 0 },
         "level": { "type": "integer", "minimum": 1 },
-        "streak": {
-          "type": "object",
-          "properties": {
-            "current": { "type": "integer", "minimum": 0 },
-            "longest": { "type": "integer", "minimum": 0 },
-            "lastSessionDate": { "type": "string", "format": "date" }
-          }
-        },
         "achievements": {
           "type": "array",
           "items": {
@@ -249,11 +285,6 @@ The registry enables the dashboard view and cross-book features. Each book still
   "gamification": {
     "xp": 290,
     "level": 2,
-    "streak": {
-      "current": 2,
-      "longest": 2,
-      "lastSessionDate": "2026-05-27"
-    },
     "achievements": [
       {
         "id": "first-chapter",
@@ -324,3 +355,4 @@ The registry enables the dashboard view and cross-book features. Each book still
 - The file is append-only for `sessions` and `achievements` — never remove entries.
 - Any agent can read this file to continue a BookQuest session.
 - Confidence values (0-1) are derived from quiz scores and challenge performance.
+- Levels are computed from XP using `scripts/level-calc.js`. The agent MUST use this script — never calculate manually.
