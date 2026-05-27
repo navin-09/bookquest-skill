@@ -1,12 +1,13 @@
 {
   "name": "bookquest-skill",
-  "version": "1.0.0",
-  "description": "Gamified interactive reading companion for tech books. XP, levels, streaks, skill trees, boss fights, and Socratic teaching — never summaries.",
+  "version": "2.0.0",
+  "description": "Gamified interactive reading companion for tech books. XP, levels, streaks, skill trees, boss fights, and Socratic teaching — with extension-enforced hard rules.",
   "license": "MIT",
   "author": "",
   "keywords": [
-    "agent-skill",
+    "pi-package",
     "pi-skill",
+    "pi-extension",
     "bookquest",
     "reading",
     "gamification",
@@ -24,11 +25,13 @@
     "url": "https://github.com/<your-username>/bookquest-skill/issues"
   },
   "homepage": "https://github.com/<your-username>/bookquest-skill#readme",
+  "pi": {
+    "extensions": ["./extensions"],
+    "skills": ["./skills"]
+  },
   "files": [
-    "SKILL.md",
-    "TEACHING.md",
-    "CHALLENGES.md",
-    "PROGRESS-SCHEMA.md",
+    "extensions/",
+    "skills/",
     "scripts/",
     "README.md",
     "LICENSE"

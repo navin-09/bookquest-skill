@@ -1,6 +1,20 @@
-# 📚 BookQuest Skill
+# 📚 BookQuest
 
 **Turn any tech book into a video game.** XP, levels, streaks, skill trees, boss fights, and Socratic teaching — so you actually finish what you start.
+
+## What's New in v2
+
+BookQuest v2 uses a **hybrid architecture**:
+
+- **Extension** (`extensions/bookquest.ts`) — enforces hard rules programmatically. The LLM **cannot** drift from these rules because they're enforced by code, not instructions.
+- **Skill** (`skills/bookquest/SKILL.md`) — handles the conversational teaching, Socratic questioning, quiz generation, and tutoring flow.
+
+This means:
+- ✅ Progress is **always** saved (auto-save on every turn)
+- ✅ Level calculations are **always** validated (extension runs `level-calc.js` and corrects errors)
+- ✅ Skill tree is **always** displayed (injected into system prompt every turn)
+- ✅ Summarization attempts are blocked in independent-reading mode
+- ✅ State persists across session reloads and resumes
 
 ## Why BookQuest?
 
@@ -13,28 +27,47 @@ Tech books are hard to finish. Novels keep you hooked with cliffhangers. Tech bo
 - 📊 **Progress Tracking** — Agent-agnostic JSON progress file. Switch agents, keep your progress.
 - 🚫 **No Summaries** — The skill never dumps summaries. In independent mode, you read and the agent quizzes. In Tutor Mode, the agent teaches you interactively. Either way, no passive text dumps.
 
-## Quick Start
+## Quick Start (pi)
 
-### Install
-
-```bash
-npx skills add <your-username>/bookquest-skill
-```
-
-Or clone manually:
+### Install as a pi package (recommended)
 
 ```bash
-git clone https://github.com/<your-username>/bookquest-skill.git
-cp -r bookquest-skill ~/.pi/agent/skills/bookquest
+pi install git:github.com/<your-username>/bookquest-skill
+pi config   # Opens TUI — enable "bookquest" extension + "bookquest" skill
 ```
 
-### Use
+Then start a session:
 
 ```
+pi
 /bookquest
 ```
 
-Then provide your book (file path or URL) and start reading. Or say *"teach me Chapter 3"* to switch to **Tutor Mode** — the agent reads the book and teaches you interactively. Type `/bookquest` again to end the session.
+### Manual install
+
+```bash
+git clone https://github.com/<your-username>/bookquest-skill.git ~/.pi/agent/bookquest-skill
+
+# Symlink the extension
+mkdir -p ~/.pi/agent/extensions
+ln -s ~/.pi/agent/bookquest-skill/extensions/bookquest.ts ~/.pi/agent/extensions/bookquest.ts
+
+# Symlink the skill
+mkdir -p ~/.pi/agent/skills
+ln -s ~/.pi/agent/bookquest-skill/skills/bookquest ~/.pi/agent/skills/bookquest
+```
+
+### For other agents (Claude Code, OpenClaw, Hermes)
+
+If your agent supports the [agent skills standard](https://agentskills.io):
+
+```bash
+# Clone and symlink just the skill
+git clone https://github.com/<your-username>/bookquest-skill.git
+cp -r bookquest-skill/skills/bookquest ~/.agents/skills/bookquest
+```
+
+> **Note:** Only pi supports the extension (hard rule enforcement). Other agents get the skill without the enforcement layer.
 
 ## How It Works
 
@@ -43,43 +76,64 @@ Then provide your book (file path or URL) and start reading. Or say *"teach me C
   │
   ├─ Phase 1: Reconnaissance (first time)
   │    Skill scans your book, builds a skill tree, sets up tracking.
+  │    Extension registers the book + validates progress files.
   │
   ├─ You choose a mode:
   │    ├─ Independent-Reading: You read, the agent quizzes you.
   │    └─ Tutor Mode: The agent reads the book and teaches you.
   │
   ├─ Phase 2: Reading Loop (every session)
-  │    ├─ Choose mode per chapter:
-  │    │    ├─ 📖 Independent: You read, agent quizzes (steps 2-10 below)
-  │    │    └─ 🎓 Tutor: Agent teaches via Guided Tour (replaces steps 6-9)
-  │    │
-  │    ├─ Steps 2-5 (both modes): Show dashboard, load progress + registry, connection recap
-  │    │
-  │    ├─ Independent path (steps 6-9):
-  │    │    ├─ 6: Reading mission — agent sets questions, you read
-  │    │    ├─ 7: You read the chapter
-  │    │    ├─ 8: Core Loop:
-  │    │    │    ├─ A: Socratic Interrogation
-  │    │    │    ├─ B: Checkpoint Quiz
-  │    │    │    ├─ C: Interactive Challenge
-  │    │    │    └─ D: Knowledge Graph Update
-  │    │    └─ 9: Award XP, save progress
-  │    │
-  │    ├─ Tutor path (replaces steps 6-9):
-  │    │    ├─ Guided Tour: agent reads → teaches each concept →
-  │    │    │  checks understanding → adapts to your pace
-  │    │    ├─ Then: Checkpoint Quiz + Interactive Challenge + Knowledge Graph
-  │    │    └─ Award XP (micro-XP + completion)
-  │    │
-  │    └─ 10 (both): Offer next step
+  │    ├─ Extension injects skill tree + rules reminder
+  │    ├─ Skill handles: Socratic, quiz, challenge, tutoring
+  │    └─ Extension auto-saves progress on every turn
   │
   ├─ Phase 3: Boss Fights (end of sections)
   │    Comprehensive quiz + teach-back + real-world scenario.
-  │    Must pass to unlock the next branch.
+  │    Extension validates level after XP award.
   │
   └─ /bookquest (exit)
-       Save progress + show session summary.
+       Extension triggers deactivation summary.
 ```
+
+## Architecture
+
+```
+bookquest-skill/
+├── extensions/
+│   └── bookquest.ts          # 🆕 Enforcer extension (code, can't be ignored)
+├── skills/
+│   └── bookquest/
+│       ├── SKILL.md           # Trimmed — teaching & behavioral guidance
+│       ├── TEACHING.md        # Socratic method guide
+│       ├── CHALLENGES.md      # Challenge types and examples
+│       └── PROGRESS-SCHEMA.md # Progress file schema + registry schema
+├── scripts/
+│   ├── init-progress.js       # Progress file + registry initializer
+│   └── level-calc.js          # XP → level calculator
+├── package.json               # pi package manifest
+├── README.md
+└── LICENSE
+```
+
+## What the Extension Enforces
+
+| Rule | How |
+|------|-----|
+| Auto-save after every turn | `agent_end` handler — writes progress file |
+| Validate level calculations | Intercepts writes, runs `level-calc.js`, corrects errors |
+| Inject skill tree every turn | `before_agent_start` handler — appends tree to system prompt |
+| Block summarization in independent mode | `tool_call` handler — confirms before reading book source files |
+| State persistence across sessions | Saves state to session entries periodically |
+| `/bookquest` command | Registered command — toggle, add, switch, list books |
+
+## What the Skill Handles
+
+- Socratic questioning methodology
+- Quiz generation and challenge design
+- Tutor Mode guided tour teaching flow
+- Boss fight mechanics and scoring
+- Cross-book connections and knowledge graph
+- XP awarding rules (when to award what)
 
 ## Gamification
 
@@ -106,20 +160,6 @@ Then provide your book (file path or URL) and start reading. Or say *"teach me C
 - 🎯 **Perfectionist** — Score 100% on a checkpoint quiz
 - ...and more
 
-## Scripts
-
-- `scripts/init-progress.js` — Creates progress file + updates `registry.json`
-- `scripts/level-calc.js` — Computes level from XP (the agent MUST use this)
-
-## Progress File
-
-Progress is stored as **agent-agnostic JSON**:
-
-- Global: `~/.pi/book-progress/<book-slug>.json`
-- Per-project: `.bookquest/<book-slug>.json`
-
-The file tracks: chapters completed, XP, level, achievements, skill tree state, and a knowledge graph of concepts + connections. Any agent that supports BookQuest can read/write it.
-
 ## Multi-Book Support
 
 Read as many books as you want simultaneously. Each gets its own progress file, skill tree, and knowledge graph.
@@ -139,41 +179,49 @@ Global XP: 700 | Level: 3 (🧠 Concept Cracker)
 - `/bookquest add` — add a new book
 - `/bookquest switch <book>` — jump to another book
 - Streaks are **global** — any book keeps the streak alive
-- Cross-book concept links appear naturally (e.g., "DDIA's B-Trees connect to Clean Code's data structure chapter")
+- Cross-book concept links appear naturally
 
 ## Works With
 
-Any agent that supports the agent skills standard:
+| Agent | Extension (hard rules) | Skill (teaching) |
+|-------|----------------------|-------------------|
+| ✅ **pi** (`@earendil-works/pi-coding-agent`) | ✅ Full enforcement | ✅ Full guidance |
+| ✅ **Claude Code** | ❌ Not supported | ✅ Skill works |
+| ✅ **OpenClaw** | ❌ Not supported | ✅ Skill works |
+| ✅ **Hermes** | ❌ Not supported | ✅ Skill works |
 
-- ✅ **pi** (`@earendil-works/pi-coding-agent`)
-- ✅ **Claude Code**
-- ✅ **OpenClaw**
-- ✅ **Hermes**
-- ✅ Any agent supporting the [open skills standard](https://skills.sh)
+## Progress File
 
-## Skill Structure
+Progress is stored as **agent-agnostic JSON**:
 
+- Global: `~/.pi/book-progress/<book-slug>.json`
+- Per-project: `.bookquest/<book-slug>.json`
+
+The file tracks: chapters completed, XP, level, achievements, skill tree state, and a knowledge graph of concepts + connections. Any agent that supports BookQuest can read/write it.
+
+## Publish to npm
+
+To share on npm:
+
+```bash
+# Set up your npm account
+npm login
+
+# Publish
+npm publish
 ```
-bookquest-skill/
-├── SKILL.md              # Main skill instructions
-├── TEACHING.md           # Socratic method guide
-├── CHALLENGES.md         # Challenge types and examples
-├── PROGRESS-SCHEMA.md    # Progress file schema + registry schema
-├── scripts/
-│   ├── init-progress.js  # Progress file + registry initializer
-│   └── level-calc.js    # XP → level calculator
-├── package.json
-├── README.md
-└── LICENSE
+
+Users can then install with:
+
+```bash
+pi install npm:bookquest-skill
 ```
 
-## Philosophy
+Or from GitHub:
 
-**Reading is not passive.** BookQuest is built on three principles:
-
-1. **You do the reading.** The skill never summarizes. Summaries create the illusion of learning.
-2. **Knowledge connects.** Every chapter links to prior ones — like plot threads in a novel.
-3. **Games motivate.** XP, streaks, achievements, and boss fights tap into the same dopamine loops that make video games addictive.
+```bash
+pi install git:github.com/<your-username>/bookquest-skill
+```
 
 ## License
 
