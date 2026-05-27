@@ -218,7 +218,7 @@ The registry enables the dashboard view and cross-book features. Each book still
 {
   "book": {
     "title": "Designing Data-Intensive Applications",
-    "source": "/Users/me/books/DDIA.pdf",
+    "source": "~/books/ddia.pdf",
     "slug": "ddia",
     "author": "Martin Kleppmann",
     "totalChapters": 12,

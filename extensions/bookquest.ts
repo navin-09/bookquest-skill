@@ -69,6 +69,7 @@ function getActiveBooks(): { slug: string; title: string; source: string }[] {
 }
 
 function getProgressDirForBook(slug: string): string {
+  if (!isValidSlug(slug)) return PROGRESS_DIR_DEFAULT;
   // Check if book is in project or global dir
   const projectDir = join(process.cwd(), ".bookquest", `${slug}.json`);
   if (existsSync(projectDir)) return join(process.cwd(), ".bookquest");
@@ -76,6 +77,7 @@ function getProgressDirForBook(slug: string): string {
 }
 
 function loadProgress(slug: string): any | null {
+  if (!isValidSlug(slug)) return null;
   const baseDir = getProgressDirForBook(slug);
   const path = join(baseDir, `${slug}.json`);
   if (!existsSync(path)) return null;
@@ -87,6 +89,7 @@ function loadProgress(slug: string): any | null {
 }
 
 function saveProgress(slug: string, data: any): void {
+  if (!isValidSlug(slug)) return;
   const baseDir = getProgressDirForBook(slug);
   if (!existsSync(baseDir)) {
     // Try creating the default dir
@@ -140,6 +143,10 @@ function renderSkillTree(tree: any[]): string {
       return `  ${icon} ${node.name}`;
     })
     .join("\n");
+}
+
+function isValidSlug(slug: string): boolean {
+  return /^[a-z0-9][a-z0-9-]*$/.test(slug);
 }
 
 function getBookSourceForPath(path: string): string | null {

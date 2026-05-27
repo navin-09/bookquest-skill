@@ -86,7 +86,7 @@ const registryFile = path.join(progressDir, 'registry.json');
 // --- 1. Check existing ---
 
 if (fs.existsSync(progressFile)) {
-  console.log(`Progress file already exists: ${progressFile}`);
+  console.log(`Progress file already exists (${path.basename(progressFile)})`);
   console.log('Use the existing file or delete it to reinitialize.');
   process.exit(0);
 }
@@ -161,7 +161,7 @@ fs.mkdirSync(progressDir, { recursive: true });
   };
 
   fs.writeFileSync(progressFile, JSON.stringify(progress, null, 2));
-  console.log(`✅ Progress file created: ${progressFile}`);
+  console.log(`✅ Progress file created (${path.basename(progressFile)})`);
   console.log(`   Book: ${title} (slug: ${slug})`);
 
   // --- 3. Registry ---
@@ -175,7 +175,7 @@ fs.mkdirSync(progressDir, { recursive: true });
       try {
         registry = JSON.parse(fs.readFileSync(registryFile, 'utf-8'));
       } catch (e) {
-        console.log(`   ⚠  Corrupt registry (${e.message}), recreating.`);
+        console.log(`   ⚠  Corrupt registry file, recreating.`);
       }
     }
 
@@ -200,7 +200,7 @@ fs.mkdirSync(progressDir, { recursive: true });
         try {
           totalXp += JSON.parse(fs.readFileSync(pf, 'utf-8')).gamification?.xp ?? 0;
         } catch (e) {
-          console.error(`   ⚠  Warning: skipping corrupted file ${pf}: ${e.message}`);
+          console.error(`   ⚠  Warning: skipping corrupted file: ${e.message}`);
         }
       }
     }
@@ -218,7 +218,7 @@ fs.mkdirSync(progressDir, { recursive: true });
     }
 
     fs.writeFileSync(registryFile, JSON.stringify(registry, null, 2));
-    console.log(`   Registry updated: ${registryFile}`);
+    console.log(`   Registry updated (${path.basename(registryFile)})`);
     console.log(`   Books tracked: ${registry.books.length}`);
   }
 

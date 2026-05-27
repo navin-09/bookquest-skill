@@ -71,6 +71,7 @@ These cross-book links are bonus — don't force them. Save them to the knowledg
 1. Ask the user for the **book source**: file path, URL, or paste.
 2. Scan the table of contents.
 3. Run `node scripts/init-progress.js <book-source> --noninteractive --title="<title>" --chapters="<N>"` to create the progress file and update the registry.
+   ⚠️ **Security:** Always pass arguments as separate array elements (e.g., `["node", "scripts/init-progress.js", source, ...]`), NEVER construct a shell string. The book source is user-provided and must not be interpolated into a shell command.
 4. Display the skill tree to the user:
    ```
    📚 BookQuest: <Book Title>
