@@ -155,6 +155,7 @@ Use this flow when a chapter is in tutor mode. The agent reads the book source a
 #### Setup
 
 1. **Read the chapter** — Use the appropriate tool to extract text from the book source. For PDFs, extract text page by page as you go. For markdown/text files, read directly. The book source was provided during reconnaissance.
+   - While extracting, **map each concept chunk to its page range** so you can announce it during the tour.
 2. **Identify concept boundaries** — Scan the chapter and identify natural breakpoints: subsection headings, distinct concepts, or key ideas. **Do not plan a summary.** Plan a tour with stops.
 3. **Display skill tree** — Show the current chapter's position in the skill tree, just as you would in independent mode. The user should always see their position in the quest.
 4. **Set context** — Before starting, set expectations:
@@ -166,6 +167,7 @@ For each concept chunk in the chapter:
 
 **Step 1 — Read & Extract**
 - Read the relevant portion of the book source for this concept. Limit yourself to one concept at a time.
+- **Announce the page range** before teaching: *"We're on pages 54-57."* For non-PDF sources (no page numbers), announce the section boundary instead: *"We're on the subsection on LSM-Trees."
 
 **Step 2 — Teach**
 - Explain the concept in your own words. Keep it brief — no more than 2-3 sentences per chunk.
