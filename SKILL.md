@@ -5,7 +5,8 @@ description: >
   Install via: pi install git:github.com/navin-09/bookquest-skill
   The skill is at skills/bookquest/SKILL.md.
   The extension is at extensions/bookquest.ts.
-trigger: commands: ["/bookquest"]
+trigger:
+  commands: ["/bookquest"]
 ---
 
 # BookQuest — ⚠️ Restructured

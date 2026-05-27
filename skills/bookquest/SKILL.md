@@ -6,7 +6,8 @@ description: >
   Socratic teaching. Works with the BookQuest extension which enforces hard rules
   (auto-save, level validation, summarization blocking). Two modes: independent-reading
   and tutor mode.
-trigger: commands: ["/bookquest"]
+trigger:
+  commands: ["/bookquest"]
 ---
 
 # BookQuest — Gamified Tech Book Reader
