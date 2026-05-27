@@ -154,7 +154,7 @@ function isValidSlug(slug: string): boolean {
 function getBookSourceForPath(path: string): string | null {
   const books = getActiveBooks();
   for (const book of books) {
-    if (path === book.source) return book.slug;
+    if (book.source && path.startsWith(book.source)) return book.slug;
   }
   return null;
 }
@@ -335,7 +335,9 @@ export default function (pi: ExtensionAPI) {
           `• After reading the book, DO NOT say "this chapter covers X, Y, and Z" — start teaching the first chunk directly\n` +
           `• The user discovers each concept one at a time — don't preview them all upfront\n` +
           `• Each chunk = teach (2-3 sentences max) + check (specific question)\n` +
-          `• If the user says "just summarize it", respond: "Let me teach it to you instead."\n`;
+          `• If the user says "just summarize it", respond: "Let me teach it to you instead."\n` +
+          `• If the user answers correctly, DO NOT add extra explanation — award XP and move to the next chunk\n` +
+          `• ALWAYS connect new content to at least one concept from a prior chapter\n`;
       } else {
         updated += `\n⚠️ INDEPENDENT MODE — CRITICAL RULES:\n` +
           `• NEVER read the book content to the user — give a reading mission (page range + questions) and wait\n` +
@@ -424,7 +426,8 @@ export default function (pi: ExtensionAPI) {
               }
             }
           }
-          // In tutor mode, allow the read but rules are injected via system prompt
+          // In tutor mode, allow the read — rules are injected via system prompt
+          return { block: false };
         }
       }
     }
