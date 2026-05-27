@@ -32,7 +32,7 @@ Tech books are hard to finish. Novels keep you hooked with cliffhangers. Tech bo
 ### Install as a pi package (recommended)
 
 ```bash
-pi install git:github.com/<your-username>/bookquest-skill
+pi install git:github.com/navin-09/bookquest-skill
 pi config   # Opens TUI — enable "bookquest" extension + "bookquest" skill
 ```
 
@@ -46,7 +46,7 @@ pi
 ### Manual install
 
 ```bash
-git clone https://github.com/<your-username>/bookquest-skill.git ~/.pi/agent/bookquest-skill
+git clone https://github.com/navin-09/bookquest-skill.git ~/.pi/agent/bookquest-skill
 
 # Symlink the extension
 mkdir -p ~/.pi/agent/extensions
@@ -63,7 +63,7 @@ If your agent supports the [agent skills standard](https://agentskills.io):
 
 ```bash
 # Clone and symlink just the skill
-git clone https://github.com/<your-username>/bookquest-skill.git
+git clone https://github.com/navin-09/bookquest-skill.git
 cp -r bookquest-skill/skills/bookquest ~/.agents/skills/bookquest
 ```
 
@@ -220,7 +220,7 @@ pi install npm:bookquest-skill
 Or from GitHub:
 
 ```bash
-pi install git:github.com/<your-username>/bookquest-skill
+pi install git:github.com/navin-09/bookquest-skill
 ```
 
 ## License

@@ -2,7 +2,7 @@
 name: bookquest
 description: >
   ⚠️ MOVED — BookQuest is now a hybrid skill+extension pi package.
-  Install via: pi install git:github.com/<user>/bookquest-skill
+  Install via: pi install git:github.com/navin-09/bookquest-skill
   The skill is at skills/bookquest/SKILL.md.
   The extension is at extensions/bookquest.ts.
 trigger: commands: ["/bookquest"]
@@ -26,7 +26,7 @@ This file is kept for backward compatibility. BookQuest is now a
 Install as a pi package:
 
 ```bash
-pi install git:github.com/<your-username>/bookquest-skill
+pi install git:github.com/navin-09/bookquest-skill
 pi config   # Enable extension + skill
 ```
 

@@ -14,7 +14,7 @@
  *   ✅ Remind the LLM of hard rules every turn to prevent drift
  *
  * Install via pi package:
- *   pi install git:github.com/<user>/bookquest-skill
+ *   pi install git:github.com/navin-09/bookquest-skill
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
