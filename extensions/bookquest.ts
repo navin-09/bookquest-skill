@@ -38,7 +38,9 @@ const HARD_RULES_REMINDER = `
 [BOOKQUEST HARD RULES — enforced by extension]
 • Save progress after EVERY interaction — extension auto-saves on agent_end
 • Level calculations MUST use \`node scripts/level-calc.js <xp>\` — extension validates
-• NEVER summarize content in independent-reading mode — give reading missions, not summaries
+• NEVER summarize content — not in independent mode, not in tutor mode
+• In independent mode: give reading missions (page range + questions), NOT summaries
+• In tutor mode: teach ONE chunk at a time with a check between each — NEVER present a concept roadmap/outline
 • ALWAYS run end-of-chapter quiz + challenge before unlocking next chapter
 • ALWAYS present the skill tree at session start
 `.trim();
@@ -324,6 +326,22 @@ export default function (pi: ExtensionAPI) {
       const mode = chapterEntry?.mode || progress?.book?.defaultMode || "independent";
       state.currentChapterMode = mode;
       updated += `\nCurrent chapter: ${currCh} (${mode} mode)\n`;
+
+      // Inject tutor-mode specific reinforcement
+      if (mode === "tutor") {
+        updated += `\n⚠️ TUTOR MODE — CRITICAL RULES:\n` +
+          `• Teach ONE concept chunk at a time — never two in sequence without a checkpoint between them\n` +
+          `• NEVER present a concept roadmap/outline of what you're about to teach\n` +
+          `• After reading the book, DO NOT say "this chapter covers X, Y, and Z" — start teaching the first chunk directly\n` +
+          `• The user discovers each concept one at a time — don't preview them all upfront\n` +
+          `• Each chunk = teach (2-3 sentences max) + check (specific question)\n` +
+          `• If the user says "just summarize it", respond: "Let me teach it to you instead."\n`;
+      } else {
+        updated += `\n⚠️ INDEPENDENT MODE — CRITICAL RULES:\n` +
+          `• NEVER read the book content to the user — give a reading mission (page range + questions) and wait\n` +
+          `• NEVER summarize what pages cover — just point to the range and set questions\n` +
+          `• If the user says "just summarize it", respond: "Summaries create the illusion of learning."\n`;
+      }
     }
 
     return { systemPrompt: updated };
@@ -358,53 +376,55 @@ export default function (pi: ExtensionAPI) {
   });
 
   // ═══════════════════════════════════════════
-  //  4. BLOCK content summarization in independent mode
+  //  4. BLOCK content summarization roadmap patterns in tutor mode
   // ═══════════════════════════════════════════
 
   pi.on("tool_call", async (event, ctx) => {
     if (!state.active) return;
     if (event.toolName !== "read" && event.toolName !== "bash") return;
 
+    const books = getActiveBooks();
+
     // Track book source reads — flag if LLM reads book source in independent mode
     if (event.toolName === "read") {
       const path = String(event.input.path || "");
       const bookSlug = getBookSourceForPath(path);
-      if (bookSlug && state.currentChapterMode === "independent") {
-        // In independent mode, the user reads — not the LLM
-        // Don't block completely (LLM may need to check page ranges),
-        // but inject a reminder into the result
-        // The skill instruction handles the behavioral "don't summarize" rule.
-        // We just flag it.
-        return { block: false }; // Let through but the skill handles the behavior
+      if (bookSlug) {
+        if (state.currentChapterMode === "independent") {
+          // In independent mode, the user reads — not the LLM
+          return { block: false }; // Let through with reminder
+        }
+        if (state.currentChapterMode === "tutor") {
+          // In tutor mode, the LLM needs to read — but inject a reminder
+          // that it must NOT present a concept roadmap after reading
+          // This is handled via before_agent_start injecting the rule
+          return { block: false };
+        }
       }
     }
 
     // Check for bash commands that read book files
     if (event.toolName === "bash") {
       const cmd = String(event.input.command || "");
-      const books = getActiveBooks();
       for (const book of books) {
-        if (
-          book.source &&
-          cmd.includes(book.source) &&
-          state.currentChapterMode === "independent"
-        ) {
-          // LLM is trying to read the book source in independent mode
-          // This is likely a summarization attempt
-          if (ctx.hasUI) {
-            const allow = await ctx.ui.confirm(
-              "📚 BookQuest Guard",
-              `The assistant is trying to read the book source in independent-reading mode.\n\n` +
-                `This is likely an attempt to summarize content. Allow anyway?`,
-            );
-            if (!allow) {
-              return {
-                block: true,
-                reason:
-                  "BookQuest: Reading book source in independent mode may lead to summarization, which is not allowed.",
-              };
+        if (book.source && cmd.includes(book.source)) {
+          if (state.currentChapterMode === "independent") {
+            if (ctx.hasUI) {
+              const allow = await ctx.ui.confirm(
+                "📚 BookQuest Guard",
+                `The assistant is trying to read the book source in independent-reading mode.\n\n` +
+                  `This is likely an attempt to summarize content. Allow anyway?`,
+              );
+              if (!allow) {
+                return {
+                  block: true,
+                  reason:
+                    "BookQuest: Reading book source in independent mode may lead to summarization, which is not allowed.",
+                };
+              }
             }
           }
+          // In tutor mode, allow the read but rules are injected via system prompt
         }
       }
     }
