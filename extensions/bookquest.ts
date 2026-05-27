@@ -487,11 +487,15 @@ export default function (pi: ExtensionAPI) {
   //  7. INTERCEPT roadmap patterns in tutor mode
   // ═══════════════════════════════════════════
 
-  /** Patterns that indicate a concept roadmap / chapter preview */
+  /** Patterns that indicate a concept roadmap / chapter preview.
+   *  Matches the full line so we don't leave dangling fragments.
+   *  Uses 'g' flag to catch multiple roadmap announcements in one message.
+   */
   const ROADMAP_PATTERNS = [
-    /^\s*Next up[—–-]\s*page(?:s)?\s+\d+/im,
-    /^\s*Next[—–-]\s*page(?:s)?\s+\d+/im,
-    /^\s*(?:Let's move on to|Moving on to|Now let's (?:look at|cover|discuss|dive into)|Let me (?:cover|explain|walk through)|I'll now (?:cover|explain|teach|walk through))\b[^\n]*page(?:s)?\s+\d+/im,
+    /^\s*Next up\s*[—–-]\s*page(?:s)?\s+\d+(?:[-–]\d+)?[^\n]*:?\s*/gim,
+    /^\s*Next\s*[—–-]\s*page(?:s)?\s+\d+(?:[-–]\d+)?[^\n]*:?\s*/gim,
+    /^\s*(?:Let's move on to|Moving on to|Now let's (?:look at|cover|discuss|dive into)|Let me (?:cover|explain|walk through)|I'll now (?:cover|explain|teach|walk through))\b[^\n]*page(?:s)?\s+\d+(?:[-–]\d+)?[^\n]*:?\s*/gim,
+    /^\s*(?:Let me log (?:the concepts|this|that).*|Time to move on.*|Moving right along.*)\s*/gim,
   ];
 
   pi.on("message_end", async (event, ctx) => {
@@ -501,35 +505,26 @@ export default function (pi: ExtensionAPI) {
     const content = event.message.content;
     if (typeof content !== "string") return;
 
-    // Check for roadmap patterns
+    // Strip all roadmap announcements
+    let cleaned = content;
     let matched = false;
     for (const pattern of ROADMAP_PATTERNS) {
-      if (pattern.test(content)) {
-        matched = true;
-        break;
-      }
+      const before = cleaned;
+      cleaned = cleaned.replace(pattern, "");
+      if (cleaned !== before) matched = true;
     }
 
-    if (matched) {
-      // Strip roadmap announcements from the message
-      // Replace "Next up — pages X-Y: Title\n\n" with nothing
-      // Replace "Next — pages X-Y: Title\n\n" with nothing
-      let cleaned = content;
-      for (const pattern of ROADMAP_PATTERNS) {
-        cleaned = cleaned.replace(pattern, "");
-      }
-      // Also strip leading blank lines left after removal
-      cleaned = cleaned.replace(/^\n+/, "");
+    // Also strip leading blank lines left after removal
+    cleaned = cleaned.replace(/^\n+/, "");
 
-      if (cleaned !== content) {
-        // Queue a corrective message for the NEXT turn
-        pi.sendUserMessage(
-          "[BookQuest correction] You presented a concept roadmap or multi-chunk preview. " +
-          "In tutor mode, teach ONE concept chunk at a time. " +
-          "Do not announce pages or preview what's coming next. " +
-          "Start teaching the next chunk directly with a check after it."
-        );
-      }
+    if (matched && cleaned !== content) {
+      // Queue a corrective message for the NEXT turn
+      pi.sendUserMessage(
+        "[BookQuest correction] You presented a concept roadmap or multi-chunk preview. " +
+        "In tutor mode, teach ONE concept chunk at a time. " +
+        "Do not announce pages or preview what's coming next. " +
+        "Start teaching the next chunk directly with a check after it."
+      );
 
       return { message: { ...event.message, content: cleaned } };
     }
