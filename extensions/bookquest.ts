@@ -191,8 +191,9 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
   const CROSS = "┼";
   const ARROW_R = " ──► ";
 
-  // Max diagram width for terminal responsiveness
-  const MAX_WIDTH = 78;
+  // Max diagram width — auto-detect terminal width, fill the screen
+  // Subtract 2 for terminal padding (scrollbar, edge)
+  const MAX_WIDTH = (process.stdout.columns || 80) - 2;
 
   function pad(s: string, w: number): string {
     const str = String(s ?? "");
@@ -213,6 +214,38 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
 
   function boxRow(cells: string[], widths: number[]): string {
     return V + " " + cells.map((c, i) => pad(c, widths[i])).join(" " + V + " ") + " " + V;
+  }
+
+  /** Word-wrap text into lines that fit within maxWidth chars */
+  function wrapText(text: string, maxWidth: number): string[] {
+    if (text.length <= maxWidth) return [text];
+    const words = text.split(" ");
+    const lines: string[] = [];
+    let current = "";
+    for (const word of words) {
+      if ((current + " " + word).trim().length <= maxWidth) {
+        current = (current + " " + word).trim();
+      } else {
+        if (current) lines.push(current);
+        // If a single word is wider than maxWidth, let it overflow naturally
+        // rather than hyphenating (hyphenation looks ugly and is hard to get right)
+        current = word;
+      }
+    }
+    if (current) lines.push(current);
+    return lines.length > 0 ? lines : [text];
+  }
+
+  /** Render a multi-line row where each cell can wrap to multiple lines */
+  function boxRowMulti(cells: string[], widths: number[]): string[] {
+    const wrapped = cells.map((c, i) => wrapText(c, widths[i]));
+    const maxLines = Math.max(...wrapped.map((w) => w.length));
+    const lines: string[] = [];
+    for (let line = 0; line < maxLines; line++) {
+      const rowCells = wrapped.map((w) => (line < w.length ? w[line] : ""));
+      lines.push(boxRow(rowCells, widths));
+    }
+    return lines;
   }
 
   const type = params.type;
@@ -253,10 +286,13 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
     lines.push(boxRow(["Aspect", leftLabel, rightLabel], hdrW));
     // Separator
     lines.push(LM + H.repeat(aspectW + 2) + CROSS + H.repeat(leftW + 2) + CROSS + H.repeat(rightW + 2) + RM);
-    // Data rows
+    // Data rows (multi-line — wraps long content within column widths)
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
-      lines.push(boxRow([r.aspect, r.left, r.right], hdrW));
+      const multiLines = boxRowMulti([r.aspect, r.left, r.right], hdrW);
+      for (const ml of multiLines) {
+        lines.push(ml);
+      }
       if (i < rows.length - 1) {
         lines.push(LM + H.repeat(aspectW + 2) + CROSS + H.repeat(leftW + 2) + CROSS + H.repeat(rightW + 2) + RM);
       }
