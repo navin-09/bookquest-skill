@@ -276,7 +276,13 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
     // Cap boxW so total fits in MAX_WIDTH
     const arrowLen = ARROW_R.length;
     const maxBoxW = Math.floor((MAX_WIDTH - (steps.length - 1) * arrowLen) / steps.length) - 2;
-    const boxW = Math.max(4, Math.min(idealBoxW, maxBoxW));
+    // Absolute minimum readable boxW is 4 (label max = 2 chars). If maxBoxW < 4, cap steps.
+    const MIN_BOXW = 4;
+    const maxStepsFit = maxBoxW < MIN_BOXW
+      ? Math.max(2, Math.floor((MAX_WIDTH - arrowLen) / (MIN_BOXW + 2 + arrowLen)))
+      : steps.length;
+    const cappedSteps = steps.slice(0, maxStepsFit);
+    const boxW = Math.max(MIN_BOXW, Math.min(idealBoxW, maxBoxW >= MIN_BOXW ? maxBoxW : Math.floor((MAX_WIDTH - (cappedSteps.length - 1) * arrowLen) / cappedSteps.length) - 2));
     const arrowStr = ARROW_R;
 
     const lines: string[] = [];
@@ -285,15 +291,16 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
     lines.push("");
 
     // Top borders
+    const renderSteps = cappedSteps || steps;
     let topRow = "";
     let midRow = "";
     let botRow = "";
-    for (let i = 0; i < steps.length; i++) {
-      const s = steps[i];
+    for (let i = 0; i < renderSteps.length; i++) {
+      const s = renderSteps[i];
       topRow += TL + H.repeat(boxW) + TR;
       midRow += V + " " + pad(s.label, boxW - 2) + " " + V;
       botRow += BL + H.repeat(boxW) + BR;
-      if (i < steps.length - 1) {
+      if (i < renderSteps.length - 1) {
         topRow += arrowStr;
         midRow += " " + "─".repeat(arrowStr.length - 3) + "► ";
         botRow += arrowStr;
@@ -303,15 +310,15 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
     lines.push(midRow);
 
     // Description rows if present
-    if (steps.some((s) => s.description)) {
+    if (renderSteps.some((s: any) => s.description)) {
       let descRow = "";
       let descBotRow = "";
-      for (let i = 0; i < steps.length; i++) {
-        const s = steps[i];
+      for (let i = 0; i < renderSteps.length; i++) {
+        const s = renderSteps[i];
         const desc = s.description || "";
         descRow += V + " " + pad(desc, boxW - 2) + " " + V;
         descBotRow += BL + H.repeat(boxW) + BR;
-        if (i < steps.length - 1) {
+        if (i < renderSteps.length - 1) {
           descRow += " " + pad("", arrowStr.length - 2) + " ";
           descBotRow += arrowStr;
         }
@@ -712,7 +719,7 @@ export default function (pi: ExtensionAPI) {
       `Use instead of hand-crafting ASCII diagrams in your response — this tool ` +
       `computes exact column widths, border positions, and arrow alignment so the ` +
       `diagram is perfectly shaped. Prefer flow (simpler, fits screen). Use comparison sparingly for trade-offs.`,
-    promptSnippet: "render_diagram(type=\"flow\"|\"comparison\"|\"hierarchy\") — generate a clean Unicode diagram",
+    promptSnippet: "render_diagram(type=\"flow\") — simple inline flow diagram (or \"comparison\" for trade-offs, \"hierarchy\" for trees)",
     parameters: Type.Object({
       type: Type.Union([
         Type.Literal("flow"),
