@@ -209,7 +209,7 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
     const total = widths.reduce((a, b) => a + b, 0);
     if (total <= maxAvailable) return widths;
     const ratio = maxAvailable / total;
-    return widths.map((w) => Math.max(3, Math.floor(w * ratio)));
+    return widths.map((w) => Math.max(10, Math.floor(w * ratio)));
   }
 
   function boxRow(cells: string[], widths: number[]): string {
