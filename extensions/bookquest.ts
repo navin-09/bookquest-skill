@@ -197,9 +197,10 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
   function pad(s: string, w: number): string {
     const str = String(s ?? "");
     if (str.length <= w) return str + " ".repeat(Math.max(0, w - str.length));
-    // When content exceeds box width, truncate with … to keep borders aligned.
-    // The LLM is instructed to keep labels short; any truncation is a signal.
-    return str.slice(0, w - 1) + "\u2026";
+    // Content wider than box — show it WITHOUT truncation. The diagram borders
+    // will break visually, but the MEANING is preserved. The LLM is instructed
+    // to keep labels short — any broken borders are its responsibility.
+    return str;
   }
 
   /** Cap column widths proportionally so total doesn't exceed maxAvailable */
