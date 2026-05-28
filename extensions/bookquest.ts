@@ -196,7 +196,13 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
 
   function pad(s: string, w: number): string {
     const str = String(s ?? "");
-    return str.length > w ? str.slice(0, w - 1) + "\u2026" : str + " ".repeat(Math.max(0, w - str.length));
+    if (str.length <= w) return str + " ".repeat(Math.max(0, w - str.length));
+    // Middle truncation — preserves both start and end of essential content
+    // 60/40 split biases toward preserving the end (suffixes, identifiers)
+    if (w <= 5) return str.slice(0, w - 1) + "\u2026";
+    const startLen = Math.ceil((w - 1) * 0.55);
+    const endLen = (w - 1) - startLen;
+    return str.slice(0, startLen) + "\u2026" + str.slice(str.length - endLen);
   }
 
   /** Cap column widths proportionally so total doesn't exceed maxAvailable */
@@ -276,10 +282,10 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
     // Cap boxW so total fits in MAX_WIDTH
     const arrowLen = ARROW_R.length;
     const maxBoxW = Math.floor((MAX_WIDTH - (steps.length - 1) * arrowLen) / steps.length) - 2;
-    // Absolute minimum readable boxW is 4 (label max = 2 chars). If maxBoxW < 4, cap steps.
-    const MIN_BOXW = 4;
-    const maxStepsFit = maxBoxW < MIN_BOXW
-      ? Math.max(2, Math.floor((MAX_WIDTH - arrowLen) / (MIN_BOXW + 2 + arrowLen)))
+    // Minimum readable boxW = 12 (10 chars for content). If content is wider than available, cap steps to max 3.
+    const MIN_BOXW = 12;
+    const maxStepsFit = idealBoxW > maxBoxW
+      ? Math.min(steps.length, Math.max(2, Math.floor((MAX_WIDTH - arrowLen) / (MIN_BOXW + 2 + arrowLen))))
       : steps.length;
     const cappedSteps = steps.slice(0, maxStepsFit);
     const boxW = Math.max(MIN_BOXW, Math.min(idealBoxW, maxBoxW >= MIN_BOXW ? maxBoxW : Math.floor((MAX_WIDTH - (cappedSteps.length - 1) * arrowLen) / cappedSteps.length) - 2));
