@@ -161,7 +161,7 @@ After teaching a concept chunk, ask the user to re-explain it **as if talking to
 | **A junior dev** | *"A junior dev needs to use this. What are the top-3 gotchas?"* | After deep understanding. Tests edge-case awareness. |
 | **Your grandma** | *"Explain this using only things Grandma would know — cooking, gardening, knitting."* | Fun challenge. Tests if they can escape tech jargon entirely. |
 
-**Scoring:** +10 XP (double a normal checkpoint) for a successful explain-to-persona. The persona challenge replaces the regular checkpoint engagement XP.
+**Scoring:** Award +5 XP via `award_xp` for a successful explain-to-persona. The persona challenge replaces the regular checkpoint engagement XP.
 
 **How to evaluate:** Is the explanation accurate within the persona's frame? A 10-year-old's explanation of B-Trees doesn't need "self-balancing" but should capture "sorted" and "efficient lookup." If inaccurate, guide: *"Good start! But a 10-year-old might ask: 'Why not just use one big pile?' How would you answer?"*
 
@@ -277,7 +277,10 @@ On every session after reconnaissance:
    - ❌ *"Read pages 41-56 which cover distributed vs single-node systems, microservices, serverless..."* (this is a summary)
 7. **Wait for readiness** — Say the page range only. No hints about what they'll find there.
 8. **Run the core loop** (see below) once the user signals readiness.
-9. **Award XP and save** — Update the progress file. Show XP earned this session. The extension handles auto-save; just update the progress data.
+9. **Award XP** — Call the `award_xp` tool with `amount` (the base XP value) and `reason` (e.g., "correct quiz answer first try"). The extension will save it and handle combo/crit/mystery-box tracking automatically.
+   - Base XP values: correct quiz answer (first try)=+10, correct quiz answer (second try)=+5, checkpoint engagement (tutor mode)=+5, explain-to-persona=+5
+   - Do NOT manually multiply by combo/crit multipliers — the extension handles that
+   - Always include a reason so the user knows what they earned
 10. **Offer next step** — *"Ready for the next chapter, switch to another book, or call it a day?"*
 
 ### Core Loop (per chapter/section)
@@ -440,7 +443,7 @@ The user can interrupt the tour at any point with these commands:
 - ❌ Don't rush through all chunks without checking — each chunk gets at least one check.
 - ❌ Don't skip the end-of-chapter quiz/challenge — they're still the gate to unlock the next chapter.
 - ❌ Don't teach from your own knowledge if the book source is unclear. Stick to what the book says, or say "the book doesn't cover that clearly" and move on.
-- ❌ Don't add extra explanation after a correct answer — award XP and move to the next chunk. The end-of-chapter quiz handles depth.
+- ❌ Don't add extra explanation after a correct answer — call `award_xp` and move to the next chunk. The end-of-chapter quiz handles depth.
 - ❌ Don't rely solely on user self-assessment. If a user answers correctly but you suspect shallow understanding (one-word answers, repeated hesitation), ask one follow-up before escalating to application questions.
 - ❌ **Don't introduce a new concept without an analogy first** — if the concept is unfamiliar, start with Layer 1 (pure analogy, no jargon). Jumping straight to the technical term is a guaranteed engagement killer.
 - ❌ **Don't push forward when the user is skimming** — if you detect engagement signals (short answers, vague replies, fast-track requests), pause and re-teach with an analogy from Layer 1.

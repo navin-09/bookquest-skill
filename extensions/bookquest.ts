@@ -17,7 +17,6 @@
  *   ✅ Auto-save progress after every turn
  *   ✅ Validate level calculations via level-calc.js
  *   ✅ Inject current skill tree into system prompt every turn
- *   ✅ Block content summarization in independent-reading mode
  *   ✅ Track activation state across the session
  *   ✅ Remind the LLM of hard rules every turn to prevent drift
  *   ✅ render_diagram — custom tool for perfectly-aligned Unicode diagrams
@@ -141,10 +140,7 @@ function saveProgress(slug: string, data: any): void {
   if (!isValidSlug(slug)) return;
   const baseDir = getProgressDirForBook(slug);
   if (!existsSync(baseDir)) {
-    const defaultDir = PROGRESS_DIR_DEFAULT;
-    mkdirSync(defaultDir, { recursive: true });
-    writeFileSync(join(defaultDir, `${slug}.json`), JSON.stringify(data, null, 2));
-    return;
+    mkdirSync(baseDir, { recursive: true });
   }
   writeFileSync(join(baseDir, `${slug}.json`), JSON.stringify(data, null, 2));
 }
@@ -154,7 +150,7 @@ async function computeLevel(pi: ExtensionAPI, xp: number): Promise<any> {
     const { stdout } = await pi.exec("node", [LEVEL_CALC_SCRIPT, String(xp)]);
     return JSON.parse(stdout.trim());
   } catch {
-    // Fallback: manual calculation
+    // Fallback: manual calculation (including infinite mastery for XP >= 3000)
     const FALLBACK_LEVELS = [
       { level: 1, xp: 0, title: "📖 Page Turner" },
       { level: 2, xp: 100, title: "📚 Chapter Runner" },
@@ -165,21 +161,49 @@ async function computeLevel(pi: ExtensionAPI, xp: number): Promise<any> {
       { level: 7, xp: 2200, title: "🧙 Tech Sage" },
       { level: 8, xp: 3000, title: "👑 Grandmaster Reader" },
     ];
-    let current = FALLBACK_LEVELS[0];
-    for (const l of FALLBACK_LEVELS) {
-      if (xp >= l.xp) current = l;
-      else break;
+    const BASE = 3000;
+
+    // Compute mastery XP threshold for a given level n (n >= 9)
+    const getMasteryThreshold = (n: number): number => {
+      return Math.round(BASE * Math.pow(1.4, n - 8) / 50) * 50;
+    };
+
+    if (xp < BASE) {
+      // Level 1-8: use static table
+      let current = FALLBACK_LEVELS[0];
+      for (const l of FALLBACK_LEVELS) {
+        if (xp >= l.xp) current = l;
+        else break;
+      }
+      return {
+        xp,
+        level: current.level,
+        title: current.title,
+        mastery: 0,
+        xpIntoLevel: xp - current.xp,
+        xpForNextLevel: (FALLBACK_LEVELS.find(l => l.level === current.level + 1)?.xp || 0) - xp,
+        isMaxed: false,
+      };
     }
+
+    // Mastery levels (Level 9+)
+    let level = 8;
+    let threshold = BASE;
+    while (xp >= threshold) {
+      level++;
+      threshold = getMasteryThreshold(level + 1);
+    }
+    const mastery = level - 8;
+    const prevThreshold = getMasteryThreshold(level);
+    const nextThreshold = getMasteryThreshold(level + 1);
     return {
       xp,
-      level: current.level,
-      title: current.title,
-      mastery: 0,
-      xpIntoLevel: xp - current.xp,
-      xpForNextLevel: current.level < 8
-        ? (FALLBACK_LEVELS.find(l => l.level === current.level + 1)?.xp || 0) - xp
-        : 0,
-      isMaxed: current.level >= 8,
+      level,
+      title: "👑 Grandmaster Reader",
+      mastery,
+      xpIntoLevel: xp - prevThreshold,
+      xpForNextLevel: nextThreshold - xp,
+      isMaxed: false,
     };
   }
 }
@@ -297,6 +321,7 @@ interface GamificationEngine {
   newLevel: number;
   newLevelTitle: string;
   newMastery: number;
+  lastXp: number;                   // XP baseline captured before LLM turn (for delta detection)
 }
 
 function freshGamificationEngine(): GamificationEngine {
@@ -314,6 +339,7 @@ function freshGamificationEngine(): GamificationEngine {
     newLevel: 1,
     newLevelTitle: "📖 Page Turner",
     newMastery: 0,
+    lastXp: 0,
   };
 }
 
@@ -595,6 +621,7 @@ export default function (pi: ExtensionAPI) {
         state.currentBookTitle = found.title;
         // Reset gamification for fresh session
         Object.assign(game, freshGamificationEngine());
+        stateSaveCounter = 0;
         if (ctx.hasUI) ctx.ui.notify(`📚 Switched to: ${found.title}`, "info");
         await pi.sendUserMessage(
           `/bookquest switched to "${found.title}" (${found.slug}). Load progress and continue.`
@@ -630,6 +657,7 @@ export default function (pi: ExtensionAPI) {
       } else {
         state.active = true;
         Object.assign(game, freshGamificationEngine());
+        stateSaveCounter = 0;
         const books = getActiveBooks();
 
         if (books.length === 0) {
@@ -682,6 +710,8 @@ export default function (pi: ExtensionAPI) {
 
     if (state.currentBookSlug) {
       const progress = loadProgress(state.currentBookSlug);
+      // Capture baseline XP for delta detection in agent_end
+      game.lastXp = progress?.gamification?.xp || 0;
       if (progress?.progress?.skillTree) {
         const tree = renderSkillTree(progress.progress.skillTree);
         updated += `\n\n## Current Skill Tree: ${state.currentBookTitle}\n${tree}\n`;
@@ -767,7 +797,7 @@ export default function (pi: ExtensionAPI) {
           `• The user discovers each concept one at a time — don't preview them all upfront\n` +
           `• Each chunk = teach (2-3 sentences for familiar concepts, 4-5 for analogy-first) + check (specific question)\n` +
           `• If the user says "just summarize it", respond: "Let me teach it to you instead."\n` +
-          `• If the user answers correctly, DO NOT add extra explanation — award XP and move to the next chunk\n` +
+          `• When the user answers correctly, call the award_xp tool with the base XP amount, then move to the next chunk\n` +
           `• ALWAYS connect new content to at least one concept from a prior chapter\n` +
           `\n📊 VISUAL-FIRST RULE (user learns faster with visuals):\n` +
           `• For EVERY concept chunk, include a diagram — either from the book or generated via render_diagram\n` +
@@ -798,10 +828,9 @@ export default function (pi: ExtensionAPI) {
   pi.on("agent_end", async (_event, ctx) => {
     if (!state.active || !state.currentBookSlug) return;
 
+    // Reload progress from disk (LLM may have persisted XP via award_xp tool)
     const progress = loadProgress(state.currentBookSlug);
     if (!progress) return;
-
-    const oldXp = progress.gamification?.xp || 0;
 
     // Validate level against XP
     const computed = await computeLevel(pi, progress.gamification?.xp || 0);
@@ -813,8 +842,10 @@ export default function (pi: ExtensionAPI) {
     }
 
     // ── Detect XP change → user answered a question ──
-    const newXp = progress.gamification?.xp || 0;
-    const xpDelta = newXp - oldXp;
+    // Compare current XP (from disk, possibly updated via award_xp tool) against
+    // the pre-turn baseline captured in before_agent_start
+    const currentXp = progress.gamification?.xp || 0;
+    const xpDelta = currentXp - game.lastXp;
 
     if (xpDelta > 0) {
       // User got something correct — increment combo
@@ -1056,6 +1087,40 @@ export default function (pi: ExtensionAPI) {
     }),
     execute: async (toolCallId, params) => {
       return renderDiagram(params);
+    },
+  });
+
+  // ═══════════════════════════════════════════
+  //  8. award_xp — Tool for LLM to persist XP
+  // ═══════════════════════════════════════════
+
+  pi.registerTool({
+    name: "award_xp",
+    label: "Award XP",
+    description: `Award XP to the user for a correct answer or completed task. ` +
+      `The extension tracks the combo streak and rolls for critical hits / mystery boxes. ` +
+      `Always include a reason. Example: award_xp(amount=10, reason="correct quiz answer first try")`,
+    promptSnippet: "award_xp(amount=..., reason=\"...\")",
+    parameters: Type.Object({
+      amount: Type.Integer({ minimum: 1, description: "XP amount to award (positive integer)" }),
+      reason: Type.String({ description: "Short reason for the XP award, shown to the user" }),
+    }),
+    execute: async (toolCallId, params) => {
+      if (!state.active || !state.currentBookSlug) {
+        return `{"error": "No active book session"}`;
+      }
+      const progress = loadProgress(state.currentBookSlug);
+      if (!progress) {
+        return `{"error": "No progress file found"}`;
+      }
+      if (!progress.gamification) {
+        progress.gamification = { xp: 0, level: 1, title: "📖 Page Turner", mastery: 0 };
+      }
+      const amount = Math.max(1, Math.floor(params.amount));
+      progress.gamification.xp = (progress.gamification.xp || 0) + amount;
+      saveProgress(state.currentBookSlug, progress);
+      const total = progress.gamification.xp;
+      return JSON.stringify({ awarded: amount, reason: params.reason, totalXp: total });
     },
   });
 }
