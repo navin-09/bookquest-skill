@@ -721,11 +721,11 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "render_diagram",
     label: "Render Flow Diagram",
-    description: `Create a simple inline step-by-step flow diagram showing how a process works. ` +
-      `Use for algorithms, sequences, or any multi-step concept. Each step gets its own box ` +
-      `with a label and optional description, connected by arrows. ` +
-      `Avoid comparison tables — they're wide, complex, and usually a flow explains the concept better.`,
-    promptSnippet: "render_diagram(type=\"flow\") — draw a flow diagram showing how a process works step by step",
+    description: `Draw a SIMPLE inline diagram for a concept. KEEP ALL LABELS SHORT (3-8 words) — ` +
+      `the diagram is a visual skeleton; you explain details in your verbal response. ` +
+      `Prefer flow (steps with arrows). Avoid comparison tables (they're wide, ` +
+      `fit poorly on screen). If you must use comparison, keep cells SHORT.`,
+    promptSnippet: "render_diagram(type=\"flow\") — SIMPLE inline diagram. Keep labels SHORT (3-8 words max)",
     parameters: Type.Object({
       type: Type.Union([
         Type.Literal("flow"),
@@ -740,19 +740,19 @@ export default function (pi: ExtensionAPI) {
         description: Type.Optional(Type.String({ description: "Optional one-liner, 5-8 words max. Again, details go in the verbal explanation, not the diagram." })),
       }), { description: "(flow only) Flow steps. Keep labels SHORT (3-5 words). The verbal explanation provides all details." })),
       // comparison-specific (use sparingly — only for trade-offs)
-      left_label: Type.Optional(Type.String({ description: "(comparison only) Left column heading" })),
-      right_label: Type.Optional(Type.String({ description: "(comparison only) Right column heading" })),
+      left_label: Type.Optional(Type.String({ description: "(comparison only) Left column heading, SHORT (3-5 words)" })),
+      right_label: Type.Optional(Type.String({ description: "(comparison only) Right column heading, SHORT (3-5 words)" })),
       rows: Type.Optional(Type.Array(Type.Object({
-        aspect: Type.String({ description: "Row label, e.g., 'Read speed', 'Best for'" }),
-        left: Type.String({ description: "Left cell content" }),
-        right: Type.String({ description: "Right cell content" }),
-      }), { description: "(comparison only) Rows of the comparison table, max 5 rows" })),
+        aspect: Type.String({ description: "Row label, SHORT — 3-5 words, e.g., 'Read speed' not 'How fast data can be retrieved'" }),
+        left: Type.String({ description: "Cell content, SHORT — 3-8 words. The verbal explanation provides details." }),
+        right: Type.String({ description: "Cell content, SHORT — 3-8 words. The verbal explanation provides details." }),
+      }), { description: "(comparison only) Rows. Keep aspect/labels SHORT — details go in verbal explanation. Max 5 rows." })),
       // hierarchy-specific
-      root: Type.Optional(Type.String({ description: "(hierarchy only) Root node label" })),
+      root: Type.Optional(Type.String({ description: "(hierarchy only) Root node label, SHORT (3-5 words)" })),
       children: Type.Optional(Type.Array(Type.Object({
-        label: Type.String({ description: "Child node label" }),
-        sub_items: Type.Optional(Type.Array(Type.String(), { description: "Sub-items under this child" })),
-      }), { description: "(hierarchy only) Child nodes under the root" })),
+        label: Type.String({ description: "Child node label, SHORT (3-5 words)" }),
+        sub_items: Type.Optional(Type.Array(Type.String(), { description: "Sub-items under this child, SHORT (3-5 words each)" })),
+      }), { description: "(hierarchy only) Child nodes under the root, max 6 children" })),
     }),
     execute: async (toolCallId, params) => {
       return renderDiagram(params);
