@@ -191,9 +191,20 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
   const CROSS = "┼";
   const ARROW_R = " ──► ";
 
+  // Max diagram width for terminal responsiveness
+  const MAX_WIDTH = 78;
+
   function pad(s: string, w: number): string {
     const str = String(s ?? "");
     return str.length > w ? str.slice(0, w - 1) + "\u2026" : str + " ".repeat(Math.max(0, w - str.length));
+  }
+
+  /** Cap column widths proportionally so total doesn't exceed maxAvailable */
+  function capWidths(widths: number[], maxAvailable: number): number[] {
+    const total = widths.reduce((a, b) => a + b, 0);
+    if (total <= maxAvailable) return widths;
+    const ratio = maxAvailable / total;
+    return widths.map((w) => Math.max(3, Math.floor(w * ratio)));
   }
 
   function boxRow(cells: string[], widths: number[]): string {
@@ -212,14 +223,17 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
       return { content: [{ type: "text", text: `[comparison: ${title} — no rows]` }] };
     }
 
-    // Calculate column widths
-    const aspectW = Math.max(
+    // Calculate column widths, capped to fit terminal
+    let aspectW = Math.max(
       "Aspect".length,
       ...rows.map((r) => r.aspect.length),
       title.length > 40 ? 40 : title.length
     );
-    const leftW = Math.max(leftLabel.length, ...rows.map((r) => r.left.length));
-    const rightW = Math.max(rightLabel.length, ...rows.map((r) => r.right.length));
+    let leftW = Math.max(leftLabel.length, ...rows.map((r) => r.left.length));
+    let rightW = Math.max(rightLabel.length, ...rows.map((r) => r.right.length));
+    // Cap total width so table fits in MAX_WIDTH (border/padding overhead = 10)
+    const capped = capWidths([aspectW, leftW, rightW], MAX_WIDTH - 10);
+    aspectW = capped[0]; leftW = capped[1]; rightW = capped[2];
     const lines: string[] = [];
     // Title bar
     const titleBarWidth = aspectW + leftW + rightW + 8;
@@ -257,7 +271,12 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
 
     const maxLabel = Math.max(...steps.map((s) => s.label.length));
     const maxDesc = Math.max(...steps.map((s) => (s.description || "").length));
-    const boxW = Math.max(maxLabel, maxDesc) + 2;
+    const idealBoxW = Math.max(maxLabel, maxDesc) + 2;
+    // For flow: total width = steps * (boxW + 2) + (steps-1) * arrowLen
+    // Cap boxW so total fits in MAX_WIDTH
+    const arrowLen = ARROW_R.length;
+    const maxBoxW = Math.floor((MAX_WIDTH - (steps.length - 1) * arrowLen) / steps.length) - 2;
+    const boxW = Math.max(4, Math.min(idealBoxW, maxBoxW));
     const arrowStr = ARROW_R;
 
     const lines: string[] = [];
@@ -531,9 +550,11 @@ export default function (pi: ExtensionAPI) {
           `\n📊 VISUAL-FIRST RULE (user learns faster with visuals):\n` +
           `• For EVERY concept chunk, include a diagram — either from the book or generated via render_diagram\n` +
           `• FIRST check if the book source has a relevant figure/diagram — reference it by page or figure number\n` +
-          `• If no book diagram, use the render_diagram tool (comparison/flow/hierarchy)\n` +
+          `• If no book diagram, use the render_diagram tool\n` +
+          `• PREFER flow diagrams over comparison tables — simpler, fit the screen better, work inline with teaching\n` +
+          `• Use comparison tables ONLY when showing trade-offs between 2 specific approaches (B-Tree vs LSM-Tree)\n` +
           `• The diagram should be the FIRST thing the user sees for that chunk — before the verbal explanation\n` +
-          `• Keep diagrams focused — one concept per diagram\n` +
+          `• Keep diagrams focused — one concept per diagram, max 5 rows or 4 steps\n` +
           `• Title the diagram with the ANALOGY name (e.g., \'The Organized Pantry\'). Technical term goes inside the diagram as a label\n`;
       } else {
         updated += `\n⚠️ INDEPENDENT MODE — CRITICAL RULES:\n` +

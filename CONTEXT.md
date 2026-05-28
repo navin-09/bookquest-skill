@@ -81,8 +81,8 @@ The rule that every concept chunk must include a diagram before any verbal expla
 _Avoid_: Writing paragraphs first and adding a diagram at the end; titling the diagram with the technical term (defeats analogy-first)
 
 **render_diagram Tool**:
-A custom tool registered by the BookQuest extension. Generates properly-aligned Unicode box-drawing diagrams with exact column widths, border positions, and arrow alignment. Supports three types: comparison table, flow diagram, and hierarchy tree. The tool handles alignment math so the LLM never has to worry about broken boxes or misaligned arrows.
-_Avoid_: The LLM hand-crafting ASCII diagrams (alignment is unreliable)
+A custom tool registered by the BookQuest extension. Generates properly-aligned Unicode box-drawing diagrams capped at 78 columns for terminal fit. Supports three types: flow (PREFERRED — simple inline steps), hierarchy (trees), comparison (trade-offs — use sparingly). Widths are proportionally capped so diagrams never overflow the terminal.
+_Avoid_: Comparison tables for simple concepts; diagrams wider than 78 columns; hand-crafted ASCII diagrams (alignment is unreliable)
 
 **Different Lens (🪟)**:
 An optional one-sentence alternative perspective on a concept offered after the user responds to a checkpoint. Gives a different angle — industrial vs startup use, historical evolution, real-world trade-off between two implementations. Marked with 🪟. Keeps the user hooked by showing the concept isn't a one-dimensional fact.

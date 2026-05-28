@@ -346,7 +346,8 @@ For each concept chunk in the chapter:
   - ✅ *Call render_diagram tool with the concept first, then explain*
   - ❌ *Write paragraphs first, then add a diagram at the end*
 - **Check for book diagrams**: If the book source has a relevant figure/diagram on the current pages, reference it by page number. *"See Figure 3.2 on page 55 — that's a B-Tree in action."*
-- **Choose the right diagram type:** comparison (trade-offs, side-by-side), flow (processes, algorithms), hierarchy (trees, taxonomies)
+- **PREFER flow diagrams** over comparison tables — flow diagrams are simpler, fit the screen better, and work inline with teaching. Use comparison tables ONLY for side-by-side trade-offs (B-Tree vs LSM-Tree).
+- **Choose the right diagram type:** flow (processes, algorithms — PREFERRED), hierarchy (trees, taxonomies), comparison (trade-offs — use sparingly)
 - **Diagram title = ANALOGY name** (e.g., "🗄️ The Organized Pantry"). The technical term goes INSIDE the diagram as a label (e.g., "= B-Tree"). The diagram IS the visual form of the analogy — the user sees the analogy picture first, then hears you describe it.
 - **Flow:** Diagram (titled with analogy) → verbal analogy bridge → introduce technical term → persona check
 - **FIRST check if this concept is unfamiliar** (new jargon, not in knowledge graph, low confidence on prerequisites).
