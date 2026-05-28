@@ -349,21 +349,29 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
     lines.push(topRow);
     lines.push(midRow);
 
-    // Description rows if present
+    // Description rows if present (multi-line — wraps long descriptions within box width)
     if (renderSteps.some((s: any) => s.description)) {
-      let descRow = "";
+      const descLines = renderSteps.map((s: any) => wrapText(s.description || "", boxW - 2));
+      const maxDescLines = Math.max(...descLines.map((dl: string[]) => dl.length));
+      for (let line = 0; line < maxDescLines; line++) {
+        let descRow = "";
+        for (let i = 0; i < renderSteps.length; i++) {
+          const text = line < descLines[i].length ? descLines[i][line] : "";
+          descRow += V + " " + pad(text, boxW - 2) + " " + V;
+          if (i < renderSteps.length - 1) {
+            descRow += " " + pad("", arrowStr.length - 2) + " ";
+          }
+        }
+        lines.push(descRow);
+      }
+      // Single bottom border row
       let descBotRow = "";
       for (let i = 0; i < renderSteps.length; i++) {
-        const s = renderSteps[i];
-        const desc = s.description || "";
-        descRow += V + " " + pad(desc, boxW - 2) + " " + V;
         descBotRow += BL + H.repeat(boxW) + BR;
         if (i < renderSteps.length - 1) {
-          descRow += " " + pad("", arrowStr.length - 2) + " ";
           descBotRow += arrowStr;
         }
       }
-      lines.push(descRow);
       lines.push(descBotRow);
     } else {
       lines.push(botRow);

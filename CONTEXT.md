@@ -81,7 +81,7 @@ The rule that every concept chunk must include a diagram before any verbal expla
 _Avoid_: Writing paragraphs first and adding a diagram at the end; titling the diagram with the technical term (defeats analogy-first)
 
 **render_diagram Tool**:
-A custom tool registered by the BookQuest extension. Generates properly-aligned Unicode box-drawing diagrams. Auto-detects terminal width and fills the full screen. Supports three types: flow (step-by-step), comparison (side-by-side), hierarchy (trees). Comparison tables support multi-line cell wrapping — long content wraps within column widths instead of overflowing or truncating.
+A custom tool registered by the BookQuest extension. Generates properly-aligned Unicode box-drawing diagrams. Auto-detects terminal width and fills the full screen. Supports three types: flow (step-by-step), comparison (side-by-side), hierarchy (trees). Comparison tables and flow descriptions support multi-line word wrapping — long content wraps at word boundaries within column widths.
 _Avoid_: Hand-crafted ASCII diagrams (alignment is unreliable)
 
 **Different Lens (🪟)**:
