@@ -513,17 +513,6 @@ $ node scripts/level-calc.js 290
 { "xp": 290, "level": 2, "title": "📚 Chapter Runner", "xpIntoLevel": 190, "xpForNextLevel": 10, "isMaxed": false }
 ```
 
-### XP System
-| Action | XP |
-|--------|-----|
-| Correct quiz answer (first try) | +10 |
-| Correct quiz answer (second try) | +5 |
-| Checkpoint engagement (tutor mode) | +5 |
-| Complete interactive challenge | +20 |
-| Boss fight pass | +100 |
-| Daily reading streak | +15/day |
-| Teach-back (boss fight) | +30 |
-
 ### Levels
 | Level | XP Required | Title |
 |-------|-------------|-------|
@@ -548,12 +537,93 @@ Unlocked automatically. Examples:
 - 🚀 **Speed Reader** — Complete 3 chapters in one session
 - 🔗 **Bridge Builder** — Successfully re-explain 10 concepts to a different persona (kid, grandma, PM, etc.)
 - 🐣 **Rubber Duck** — Explain a single concept to 3 different personas back-to-back
+- 🔥🔥 **Combo King** — Reach a 10x answer streak
+- 💥 **Lucky Strike** — Trigger a Critical Hit
+- 🌟 **Rare Find** — Trigger a Rare Insight
+- 🎆 **Legendary** — Trigger a Legendary Insight (1% chance!)
+- 🎁 **Jackpot** — Open 5 Mystery Boxes
+- 🛡️ **Unbreakable** — Save your streak with a Streak Shield
+- 🌅 **Daily Grinder** — Complete 7 Daily Challenges
+- 👑 **Prestige** — Reach Mastery Level 5
 
-### Streaks
-- Increment each day the user has a BookQuest session.
-- Reset after 2+ days of inactivity.
-- Nudge at 5+ days: *"Your N-day streak is alive! Don't break it."*
-- Nudge at 1 day gap: *"Your streak is at risk! Just 10 minutes today keeps it going."*
+### XP System
+| Action | Base XP |
+|--------|---------|
+| Correct quiz answer (first try) | +10 |
+| Correct quiz answer (second try) | +5 |
+| Checkpoint engagement (tutor mode) | +5 |
+| Complete interactive challenge | +20 |
+| Boss fight pass | +100 |
+| Daily reading streak | +15/day |
+| Teach-back (boss fight) | +30 |
+| Daily challenge completion | +15-20 |
+
+**All XP awards are multiplied by the current Combo Multiplier** (see below).
+The extension rolls for Critical Hits and Mystery Boxes — you just present the results.
+
+### Answer Streak Combo (extension-managed)
+
+The extension tracks consecutive correct answers and injects the current combo state
+into the system prompt. **You read the state and apply it.**
+
+| Consecutive Correct | Multiplier | Visual |
+|---------------------|------------|--------|
+| 0-2 | 1x | — |
+| 3-4 | 1.5x | 🔥 |
+| 5-9 | 2x | 🔥🔥 |
+| 10+ | 3x | 🔥🔥🔥 |
+
+**When awarding XP on a correct answer:**
+1. Read the current combo multiplier from the `Active Gamification Bonuses` section
+   of the system prompt
+2. Apply it: `XP = base × multiplier`
+3. Display it: *"+15 XP (10 × 1.5x combo)!"*
+4. If the combo advanced to a new tier, celebrate: *"🔥 Combo upgrade! 3 correct → 1.5x!"*
+
+**When the user gets an answer wrong:**
+- Do NOT award XP
+- Append the signal `[BOOKQUEST ANSWER: wrong]` at the end of your response
+- The extension will reset the combo for the next turn
+- *"Not quite — let's try a different angle. Your combo resets, but no XP lost!"*
+
+### Critical Hits & Variable Rewards (extension-managed)
+
+The extension pre-rolls critical hits and mystery boxes. You see them in the
+`Active Gamification Bonuses` section of the system prompt.
+
+**💥 Critical Hit (20% chance per correct answer):**
+- You'll see: `💥 Critical Hit loaded — next correct answer gets 2x XP on top of combo!`
+- When the user answers correctly, announce it: *"💥 Critical Hit! That's 2x on top of your combo!"*
+- The extra multiplier compounds: `XP = base × comboMultiplier × critMultiplier`
+- Example: base 10, 1.5x combo, 2x crit = 30 XP
+
+**🌟 Rare Insight (5% chance):** 3x multiplier
+**🎆 Legendary Insight (1% chance):** 5x multiplier
+
+**🎁 Mystery Box (15% chance per correct answer):**
+- You'll see: `🎁 Mystery Box available — next correct answer unlocks bonus +N XP`
+- When the user answers correctly, announce it: *"🎁 Mystery Box! +12 bonus XP for that sharp thinking!"*
+- Mystery box bonus is flat (not multiplied), awarded on top of the answer's XP
+
+### Streak Shields (registry-managed)
+
+Streak Shields protect the user's daily streak if they miss a day. They're earned by
+passing boss fights.
+
+**How to use (in your dialogue):**
+- If the user mentions they might miss a day: *"You have 3 Streak Shields 🛡️ — they'll protect your streak if you skip a day."*
+- When a shield is consumed, the extension notifies automatically
+
+### Daily Challenge
+
+At the start of each session, the extension injects a daily challenge into the
+system prompt (under `🌅 Daily Challenge`). **Present it to the user** as part of
+the session opening.
+
+- *"🌅 Daily Challenge: [prompt]. Complete it this session for +N bonus XP!"*
+- The challenge should feel like a bonus objective, not a mandatory task
+- When the user completes the challenge, award the bonus XP on top of normal rewards
+- The challenge is valid only for today's session — tomorrow brings a new one
 
 ## Skill Tree
 

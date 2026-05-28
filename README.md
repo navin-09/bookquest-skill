@@ -2,6 +2,18 @@
 
 **Turn any tech book into a video game.** XP, levels, streaks, skill trees, boss fights, and Socratic teaching — so you actually finish what you start.
 
+## What's New in v2.1 — Habit-Forming Gamification Engine
+
+BookQuest v2.1 adds a **behavioral gamification engine** that turns reading into a genuinely addictive loop:
+
+- 🔥 **Answer Streak Combos** — Chain correct answers for 1.5x, 2x, even 3x XP multipliers. Momentum builds with every correct answer.
+- 💥 **Variable Rewards** — Random critical hits (20% chance), rare insights (5%), and legendary finds (1%) keep each answer exciting.
+- 🎁 **Mystery Boxes** — 15% chance per correct answer to unlock a flat XP bonus (5-25 XP).
+- 🛡️ **Streak Shields** — Earn shields from boss fights. They auto-consume to protect your daily streak if you miss a day.
+- 🌅 **Daily Challenges** — One bonus challenge per day with a rotating prompt. Miss it = gone forever.
+- 👑 **Infinite Prestige** — Beyond Level 8, infinite Mastery levels with scaling XP requirements. There's always another level.
+- 🎉 **Level-Up Splashes** — ASCII art celebration on every level-up.
+
 ## What's New in v2
 
 BookQuest v2 uses a **hybrid architecture**:
@@ -122,9 +134,13 @@ bookquest-skill/
 | Auto-save after every turn | `agent_end` handler — writes progress file |
 | Validate level calculations | Intercepts writes, runs `level-calc.js`, corrects errors |
 | Inject skill tree every turn | `before_agent_start` handler — appends tree to system prompt |
-| Block summarization in independent mode | `tool_call` handler — confirms before reading book source files |
+| Inject gamification state every turn | Injects combo, crits, mystery boxes, streak shields, daily challenges |
 | State persistence across sessions | Saves state to session entries periodically |
 | `/bookquest` command | Registered command — toggle, add, switch, list books |
+| Answer Streak Combo tracking | Rolls combo count + multiplier on correct answers, resets on wrong |
+| Variable Rewards (crits, boxes) | Pre-rolls 20%/5%/1% crit chances + 15% mystery box chance |
+| Streak Shield consumption | Auto-consumes shields when 2+ day gap detected |
+| Level-Up Splash | Generates ASCII art celebration on level change |
 
 ## What the Skill Handles
 
@@ -149,6 +165,26 @@ bookquest-skill/
 | 6 | 1500 | 🏆 Knowledge Knight |
 | 7 | 2200 | 🧙 Tech Sage |
 | 8 | 3000 | 👑 Grandmaster Reader |
+| 9+ | Scaling (3000 × 1.4^(n-8)) | 👑 Grandmaster Reader · Mastery N |
+
+> **Infinite progression:** After Level 8, Mastery levels scale indefinitely. There's always another level.
+
+### XP Multipliers
+| Mechanic | Effect |
+|----------|--------|
+| 3+ correct streak | 1.5x on all XP |
+| 5+ correct streak | 2x on all XP |
+| 10+ correct streak | 3x on all XP |
+| 💥 Critical Hit (20%) | 2x (stacks with combo) |
+| 🌟 Rare Insight (5%) | 3x (stacks with combo) |
+| 🎆 Legendary Insight (1%) | 5x (stacks with combo) |
+| 🎁 Mystery Box (15%) | Flat +5-25 bonus XP |
+
+### Daily Challenge
+One challenge per day with rotating types (explain-to-persona, concept-connection, real-world mapping, analogy-invent). Awards +15-20 bonus XP. Missed challenges are gone forever.
+
+### Streak Shields
+Earn 1 shield per boss fight pass. Shields auto-consume to protect your streak if you miss a day.
 
 ### Achievements
 
@@ -158,7 +194,18 @@ bookquest-skill/
 - 🧠 **Deep Thinker** — 50 Socratic questions answered correctly
 - 📚 **Bookworm** — Complete an entire book
 - 🎯 **Perfectionist** — Score 100% on a checkpoint quiz
-- ...and more
+- 🔥🔥 **Combo King** — Reach a 10x answer streak
+- 💥 **Lucky Strike** — Trigger a Critical Hit
+- 🌟 **Rare Find** — Trigger a Rare Insight
+- 🎆 **Legendary** — Trigger a Legendary Insight (1% chance!)
+- 🎁 **Jackpot** — Open 5 Mystery Boxes
+- 🛡️ **Unbreakable** — Save your streak with a Streak Shield
+- 🌅 **Daily Grinder** — Complete 7 Daily Challenges
+- 👑 **Prestige** — Reach Mastery Level 5
+- 🚀 **Speed Reader** — Complete 3 chapters in one session
+- 🔗 **Connector** — 20 inter-chapter connections made
+- 🔗 **Bridge Builder** — Successfully re-explain 10 concepts to a different persona
+- 🐣 **Rubber Duck** — Explain a single concept to 3 different personas back-to-back
 
 ## Multi-Book Support
 

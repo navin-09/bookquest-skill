@@ -34,7 +34,13 @@ A single `registry.json` in the progress directory tracks all active books:
   "globalStats": {
     "totalXp": 700,
     "level": 3,
-    "streak": { "current": 5, "longest": 5, "lastSessionDate": "2026-05-27" }
+    "streak": { "current": 5, "longest": 5, "lastSessionDate": "2026-05-27" },
+    "streakShields": 2,
+    "dailyChallenge": {
+      "date": "2026-05-28",
+      "completed": false
+    },
+    "prestigeLevel": 0
   }
 }
 ```
@@ -78,6 +84,23 @@ The registry enables the dashboard view and cross-book features. Each book still
             "longest": { "type": "integer", "minimum": 0 },
             "lastSessionDate": { "type": "string", "format": "date" }
           }
+        },
+        "streakShields": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Streak Shields protect the daily streak if a day is missed. Earned via boss fight passes."
+        },
+        "dailyChallenge": {
+          "type": "object",
+          "properties": {
+            "date": { "type": "string", "format": "date", "description": "Date of the current daily challenge" },
+            "completed": { "type": "boolean", "description": "Whether today's challenge is done" }
+          }
+        },
+        "prestigeLevel": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Prestige level. Each prestige resets XP to 0 while keeping achievements. Enables infinite progression past Level 8."
         }
       }
     }

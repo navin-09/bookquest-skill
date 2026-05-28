@@ -96,3 +96,21 @@ Tests deep understanding through metaphor.
 - **Partial** (correct but incomplete): +10 XP, give hint, allow retry
 - **Incorrect**: +0 XP, ask guiding questions, retry with support
 - **Exceptional** (elegant or creative): +30 XP, award special achievement
+
+## Daily Challenge (🌅)
+
+The extension picks one challenge per day from a rotating pool and injects it into
+the system prompt. It's a bonus objective that adds FOMO + variety.
+
+**How it works:**
+- One challenge is auto-generated each day (based on a concept from the knowledge graph)
+- It appears at session start under `🌅 Daily Challenge`
+- Types can be: explain-to-persona, concept-connection, real-world mapping, analogy-invent, teach-back-mini
+- Completing it awards +15-20 bonus XP on top of normal session rewards
+- It resets daily — missed challenges are gone forever
+
+**Your role:**
+- Present the challenge as a bonus objective, not a mandatory task
+- *"🌅 Daily Challenge: [prompt] — worth +N bonus XP if you get it this session!"*
+- Track whether the user completed it; if so, note it for the session summary
+- The challenge is designed to feel like a side quest — low pressure, high reward

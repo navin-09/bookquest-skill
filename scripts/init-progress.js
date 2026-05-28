@@ -169,11 +169,15 @@ fs.mkdirSync(progressDir, { recursive: true });
   if (!skipReg) {
     let registry = {
       books: [],
-      globalStats: { totalXp: 0, level: 1, streak: { current: 0, longest: 0, lastSessionDate: null } },
+      globalStats: { totalXp: 0, level: 1, streak: { current: 0, longest: 0, lastSessionDate: null }, streakShields: 0, dailyChallenge: { date: todayStr(), completed: false }, prestigeLevel: 0 },
     };
     if (fs.existsSync(registryFile)) {
       try {
         registry = JSON.parse(fs.readFileSync(registryFile, 'utf-8'));
+        // Ensure new fields exist (backward compat with older registries)
+        if (!registry.globalStats.streakShields) registry.globalStats.streakShields = 0;
+        if (!registry.globalStats.dailyChallenge) registry.globalStats.dailyChallenge = { date: todayStr(), completed: false };
+        if (!registry.globalStats.prestigeLevel) registry.globalStats.prestigeLevel = 0;
       } catch (e) {
         console.log(`   ⚠  Corrupt registry file, recreating.`);
       }

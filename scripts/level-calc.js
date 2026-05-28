@@ -24,26 +24,61 @@ const LEVELS = [
   { level: 8, xp: 3000, title: '👑 Grandmaster Reader' },
 ];
 
+/**
+ * Generate XP threshold for a mastery level beyond Level 8.
+ * Formula: 3000 * 1.4^(n - 8) rounded to nearest 50.
+ */
+function getMasteryXp(level) {
+  if (level <= 8) return null;
+  return Math.round(3000 * Math.pow(1.4, level - 8) / 50) * 50;
+}
+
+/** Mastery number (how many times past Level 8) */
+function getMasteryNumber(level) {
+  return level > 8 ? level - 8 : 0;
+}
+
 function getLevelInfo(xp) {
   let current = LEVELS[0];
+  // Check base levels
   for (const l of LEVELS) {
     if (xp >= l.xp) current = l;
     else break;
   }
-  const nextLevel = LEVELS.find(l => l.level === current.level + 1);
+  // Check mastery levels (infinite scaling past Level 8)
+  if (xp >= LEVELS[LEVELS.length - 1].xp) {
+    let level = LEVELS[LEVELS.length - 1].level;
+    while (true) {
+      const nextXp = getMasteryXp(level + 1);
+      if (nextXp === null || xp < nextXp) break;
+      level++;
+    }
+    current = { level, xp: getMasteryXp(level) ?? LEVELS[LEVELS.length - 1].xp, title: '👑 Grandmaster Reader' };
+  }
+
+  const nextLevel = getXpForLevel(current.level + 1);
+  // Build title with mastery suffix
+  const mastery = getMasteryNumber(current.level);
+  const displayTitle = mastery > 0
+    ? `${current.title} · Mastery ${mastery}`
+    : current.title;
   return {
     xp,
     level: current.level,
-    title: current.title,
+    title: displayTitle,
+    mastery,
     xpIntoLevel: xp - current.xp,
-    xpForNextLevel: nextLevel ? nextLevel.xp - xp : 0,
-    isMaxed: !nextLevel,
+    xpForNextLevel: nextLevel !== null ? nextLevel - xp : 0,
+    isMaxed: nextLevel === null,
   };
 }
 
 function getXpForLevel(n) {
-  const found = LEVELS.find(l => l.level === n);
-  return found ? found.xp : null;
+  if (n <= 8) {
+    const found = LEVELS.find(l => l.level === n);
+    return found ? found.xp : null;
+  }
+  return getMasteryXp(n);
 }
 
 module.exports = { getLevelInfo, getXpForLevel, LEVELS };
