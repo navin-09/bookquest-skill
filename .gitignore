@@ -3,3 +3,7 @@
 node_modules/
 .bookquest/
 .env
+
+# Review artifacts
+*-review.md
+*-verify.md
