@@ -559,7 +559,7 @@ export default function (pi: ExtensionAPI) {
           `• FIRST check if the book source has a relevant figure/diagram — reference it by page or figure number\n` +
           `• If no book diagram, use the render_diagram tool\n` +
           `• PREFER flow diagrams over comparison tables — simpler, fit the screen better, work inline with teaching\n` +
-          `• Use comparison tables ONLY when showing trade-offs between 2 specific approaches (B-Tree vs LSM-Tree)\n` +
+          `• Use comparison tables ONLY when showing trade-offs between 2 specific approaches (B-Tree vs LSM-Tree) — but if the user explicitly asks for a comparison, produce one regardless\n` +
           `• The diagram should be the FIRST thing the user sees for that chunk — before the verbal explanation\n` +
           `• Keep diagrams focused — one concept per diagram, max 5 rows or 4 steps\n` +
           `• Title the diagram with the ANALOGY name (e.g., \'The Organized Pantry\'). Technical term goes inside the diagram as a label\n`;
