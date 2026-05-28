@@ -197,11 +197,9 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
   function pad(s: string, w: number): string {
     const str = String(s ?? "");
     if (str.length <= w) return str + " ".repeat(Math.max(0, w - str.length));
-    // Content wider than box — show it raw without truncation.
-    // The diagram borders will break visually, but the MEANING is preserved.
-    // The LLM is instructed to keep labels short — if it doesn't, the
-    // visible overflow trains it to write shorter labels next time.
-    return str;
+    // When content exceeds box width, truncate with … to keep borders aligned.
+    // The LLM is instructed to keep labels short; any truncation is a signal.
+    return str.slice(0, w - 1) + "\u2026";
   }
 
   /** Cap column widths proportionally so total doesn't exceed maxAvailable */
@@ -283,7 +281,7 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
     const maxBoxW = Math.floor((MAX_WIDTH - (steps.length - 1) * arrowLen) / steps.length) - 2;
     // Minimum readable boxW = 12 (10 chars for content). If content is wider than available, cap steps to max 3.
     const MIN_BOXW = 12;
-    const maxStepsFit = idealBoxW > maxBoxW
+    const maxStepsFit = (idealBoxW > maxBoxW || maxBoxW < MIN_BOXW)
       ? Math.min(steps.length, Math.max(2, Math.floor((MAX_WIDTH - arrowLen) / (MIN_BOXW + 2 + arrowLen))))
       : steps.length;
     const cappedSteps = steps.slice(0, maxStepsFit);
@@ -567,6 +565,7 @@ export default function (pi: ExtensionAPI) {
           `• Flow: simple inline boxes with arrows showing how something works step by step.\n` +
           `• Comparison: ONLY when comparing 2 specific approaches side-by-side (e.g., B-Tree vs LSM-Tree).\n` +
           `• The diagram should be the FIRST thing the user sees for that chunk — before the verbal explanation\n` +
+          `• Keep diagram labels SHORT (3-5 words max) — details go in your verbal explanation, not the diagram\n` +
           `• Keep diagrams focused — one concept per diagram, max 5 rows or 4 steps\n` +
           `• Title the diagram with the ANALOGY name (e.g., \'The Organized Pantry\'). Technical term goes inside the diagram as a label\n`;
       } else {
@@ -720,12 +719,11 @@ export default function (pi: ExtensionAPI) {
 
   pi.registerTool({
     name: "render_diagram",
-    label: "Render Flow Diagram",
-    description: `Draw a SIMPLE inline diagram for a concept. KEEP ALL LABELS SHORT (3-8 words) — ` +
-      `the diagram is a visual skeleton; you explain details in your verbal response. ` +
-      `Prefer flow (steps with arrows). Avoid comparison tables (they're wide, ` +
-      `fit poorly on screen). If you must use comparison, keep cells SHORT.`,
-    promptSnippet: "render_diagram(type=\"flow\") — SIMPLE inline diagram. Keep labels SHORT (3-8 words max)",
+    label: "Render Diagram",
+    description: `Draw a SIMPLE inline diagram for a concept. Keep ALL labels SHORT (3-5 words). ` +
+      `The diagram is a visual skeleton — explain details verbally. ` +
+      `Use flow for processes/steps, comparison for side-by-side trade-offs, hierarchy for trees.`,
+    promptSnippet: "render_diagram(type=\"flow\"|\"comparison\"|\"hierarchy\") — SIMPLE inline diagram. Keep labels 3-5 words max",
     parameters: Type.Object({
       type: Type.Union([
         Type.Literal("flow"),
@@ -736,7 +734,7 @@ export default function (pi: ExtensionAPI) {
       subtitle: Type.Optional(Type.String({ description: "Optional one-line subtitle, e.g., the analogy name" })),
       // flow-specific (PREFERRED — simpler, fits screen)
       steps: Type.Optional(Type.Array(Type.Object({
-        label: Type.String({ description: "SHORT step name, 3-5 words max. The diagram is for quick visual reference — you explain the details verbally. Examples: 'Leader Election', 'SQL Parses'. NOT: 'The system elects a leader through a voting process' (put that in your verbal explanation)" }),
+        label: Type.String({ description: "Step name, 3-5 words max. Example: 'Leader Election'. NOT: 'The system elects a leader through voting'" }),
         description: Type.Optional(Type.String({ description: "Optional one-liner, 5-8 words max. Again, details go in the verbal explanation, not the diagram." })),
       }), { description: "(flow only) Flow steps. Keep labels SHORT (3-5 words). The verbal explanation provides all details." })),
       // comparison-specific (use sparingly — only for trade-offs)
@@ -744,8 +742,8 @@ export default function (pi: ExtensionAPI) {
       right_label: Type.Optional(Type.String({ description: "(comparison only) Right column heading, SHORT (3-5 words)" })),
       rows: Type.Optional(Type.Array(Type.Object({
         aspect: Type.String({ description: "Row label, SHORT — 3-5 words, e.g., 'Read speed' not 'How fast data can be retrieved'" }),
-        left: Type.String({ description: "Cell content, SHORT — 3-8 words. The verbal explanation provides details." }),
-        right: Type.String({ description: "Cell content, SHORT — 3-8 words. The verbal explanation provides details." }),
+        left: Type.String({ description: "Cell content, 3-5 words max. Details go in verbal explanation." }),
+        right: Type.String({ description: "Cell content, 3-5 words max. Details go in verbal explanation." }),
       }), { description: "(comparison only) Rows. Keep aspect/labels SHORT — details go in verbal explanation. Max 5 rows." })),
       // hierarchy-specific
       root: Type.Optional(Type.String({ description: "(hierarchy only) Root node label, SHORT (3-5 words)" })),
