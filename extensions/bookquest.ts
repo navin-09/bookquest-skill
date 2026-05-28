@@ -711,29 +711,29 @@ export default function (pi: ExtensionAPI) {
     description: `Generate a properly-aligned Unicode box-drawing diagram for a concept. ` +
       `Use instead of hand-crafting ASCII diagrams in your response — this tool ` +
       `computes exact column widths, border positions, and arrow alignment so the ` +
-      `diagram is perfectly shaped. Supports comparison tables, flow diagrams, and hierarchy trees.`,
-    promptSnippet: "render_diagram(type=\"comparison\"|\"flow\"|\"hierarchy\") — generate a perfectly-aligned Unicode diagram",
+      `diagram is perfectly shaped. Prefer flow (simpler, fits screen). Use comparison sparingly for trade-offs.`,
+    promptSnippet: "render_diagram(type=\"flow\"|\"comparison\"|\"hierarchy\") — generate a clean Unicode diagram",
     parameters: Type.Object({
       type: Type.Union([
-        Type.Literal("comparison"),
         Type.Literal("flow"),
+        Type.Literal("comparison"),
         Type.Literal("hierarchy"),
-      ], { description: "Diagram type: comparison (side-by-side table), flow (horizontal steps), hierarchy (tree)" }),
+      ], { description: "Diagram type: flow (PREFERRED — horizontal steps), comparison (side-by-side table, use sparingly), hierarchy (tree)" }),
       title: Type.String({ description: "Diagram title — use the ANALOGY name (e.g., 'The Organized Pantry'). Technical term goes in subtitle or inside the diagram" }),
       subtitle: Type.Optional(Type.String({ description: "Optional one-line subtitle, e.g., the analogy name" })),
-      // comparison-specific
+      // flow-specific (PREFERRED — simpler, fits screen)
+      steps: Type.Optional(Type.Array(Type.Object({
+        label: Type.String({ description: "Step name, e.g., 'Leader Election'" }),
+        description: Type.Optional(Type.String({ description: "One-line description, optional" })),
+      }), { description: "(flow only) Steps in the flow, 2-4 steps (keeps diagrams compact)" })),
+      // comparison-specific (use sparingly — only for trade-offs)
       left_label: Type.Optional(Type.String({ description: "(comparison only) Left column heading" })),
       right_label: Type.Optional(Type.String({ description: "(comparison only) Right column heading" })),
       rows: Type.Optional(Type.Array(Type.Object({
         aspect: Type.String({ description: "Row label, e.g., 'Read speed', 'Best for'" }),
         left: Type.String({ description: "Left cell content" }),
         right: Type.String({ description: "Right cell content" }),
-      }), { description: "(comparison only) Rows of the comparison table" })),
-      // flow-specific
-      steps: Type.Optional(Type.Array(Type.Object({
-        label: Type.String({ description: "Step name, e.g., 'Leader Election'" }),
-        description: Type.Optional(Type.String({ description: "One-line description, optional" })),
-      }), { description: "(flow only) Steps in the flow, 2-6 steps" })),
+      }), { description: "(comparison only) Rows of the comparison table, max 5 rows" })),
       // hierarchy-specific
       root: Type.Optional(Type.String({ description: "(hierarchy only) Root node label" })),
       children: Type.Optional(Type.Array(Type.Object({
