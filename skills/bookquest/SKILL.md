@@ -342,6 +342,12 @@ For each concept chunk in the chapter:
 - **Announce the page range** before teaching: *"We're on pages 54-57."* For non-PDF sources (no page numbers), announce the section boundary instead: *"We're on the subsection on LSM-Trees."*
 
 **Step 2 — Teach**
+- **VISUAL FIRST: Before any text, include a diagram.** The user learns faster with visuals. Use the `render_diagram` tool (registered by the extension) to generate a perfectly-aligned Unicode box-drawing diagram. The diagram comes BEFORE the verbal explanation.
+  - ✅ *Call render_diagram tool with the concept first, then explain*
+  - ❌ *Write paragraphs first, then add a diagram at the end*
+- **Check for book diagrams**: If the book source has a relevant figure/diagram on the current pages, reference it by page number. *"See Figure 3.2 on page 55 — that's a B-Tree in action."*
+- **Choose the right diagram type:** comparison (trade-offs, side-by-side), flow (processes, algorithms), hierarchy (trees, taxonomies)
+- **Diagram title = technical term**, not the analogy name
 - **FIRST check if this concept is unfamiliar** (new jargon, not in knowledge graph, low confidence on prerequisites).
 - **If unfamiliar: ALWAYS start with an analogy from Layer 1** (see [Layered Understanding Model](#layered-understanding-model)). Use the [Fun Examples Registry](#fun-examples-registry) for go-to analogies. The analogy is the hook — give it first, then bridge to the technical term.
   - ✅ *"Imagine a restaurant kitchen. Storage is organized by how fast you need things — spices at arm's reach (cache), pantry in the back (disk), freezer in the basement (archive). That's what database storage engines do."* (analogy first, no jargon yet)

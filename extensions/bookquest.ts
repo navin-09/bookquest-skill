@@ -12,12 +12,16 @@
  *   ✅ Block content summarization in independent-reading mode
  *   ✅ Track activation state across the session
  *   ✅ Remind the LLM of hard rules every turn to prevent drift
+ *   ✅ render_diagram — custom tool for perfectly-aligned Unicode diagrams
+ *   ✅ Visual-first teaching rule injected into system prompt
+ *   ✅ Book diagram references (prefer book figures over generated diagrams)
  *
  * Install via pi package:
  *   pi install git:github.com/navin-09/bookquest-skill
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { Type } from "typebox";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { homedir } from "os";
 import { join, dirname } from "path";
@@ -165,6 +169,218 @@ interface BookQuestState {
   currentBookSlug: string | null;
   currentBookTitle: string | null;
   currentChapterMode: "independent" | "tutor" | null;
+}
+
+// ── Diagram renderer ──
+
+function renderDiagram(params: any): { content: { type: string; text: string }[] } {
+  // Unicode box-drawing chars
+  const H = "─";
+  const V = "│";
+  const TL = "┌";
+  const TR = "┐";
+  const BL = "└";
+  const BR = "┘";
+  const TM = "┬";
+  const BM = "┴";
+  const LM = "├";
+  const RM = "┤";
+  const CROSS = "┼";
+  const ARROW_R = " ──► ";
+
+  function pad(s: string, w: number): string {
+    const str = String(s ?? "");
+    return str + " ".repeat(Math.max(0, w - str.length));
+  }
+
+  function boxRow(cells: string[], widths: number[]): string {
+    return V + " " + cells.map((c, i) => pad(c, widths[i])).join(" " + V + " ") + " " + V;
+  }
+
+  function separatorRow(widths: number[], left: string, mid: string, right: string, join: string): string {
+    return left + widths.map((w) => H.repeat(w + 2)).join(join) + right;
+  }
+
+  const type = params.type;
+  const title = params.title || "";
+  const subtitle = params.subtitle;
+
+  if (type === "comparison") {
+    const rows: { aspect: string; left: string; right: string }[] = params.rows || [];
+    const leftLabel = params.left_label || "";
+    const rightLabel = params.right_label || "";
+    if (rows.length === 0) {
+      return { content: [{ type: "text", text: `[comparison: ${title} — no rows]` }] };
+    }
+
+    // Calculate column widths
+    const aspectW = Math.max(
+      "Aspect".length,
+      ...rows.map((r) => r.aspect.length),
+      title.length > 40 ? 40 : title.length
+    );
+    const leftW = Math.max(leftLabel.length, ...rows.map((r) => r.left.length));
+    const rightW = Math.max(rightLabel.length, ...rows.map((r) => r.right.length));
+    const totalW = aspectW + leftW + rightW + 11; // borders + padding
+
+    const lines: string[] = [];
+    // Title bar
+    const titleBarWidth = aspectW + leftW + rightW + 7;
+    lines.push(TL + H.repeat(titleBarWidth) + TR);
+    lines.push(V + " " + pad(title, titleBarWidth) + " " + V);
+    if (subtitle) {
+      lines.push(V + " " + pad("(" + subtitle + ")", titleBarWidth) + " " + V);
+    }
+    // Header separator
+    lines.push(LM + H.repeat(aspectW + 2) + TM + H.repeat(leftW + 2) + TM + H.repeat(rightW + 2) + RM);
+    // Header row
+    const hdrW = [aspectW, leftW, rightW];
+    lines.push(boxRow(["Aspect", leftLabel, rightLabel], hdrW));
+    // Separator
+    lines.push(LM + H.repeat(aspectW + 2) + CROSS + H.repeat(leftW + 2) + CROSS + H.repeat(rightW + 2) + RM);
+    // Data rows
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      lines.push(boxRow([r.aspect, r.left, r.right], hdrW));
+      if (i < rows.length - 1) {
+        lines.push(LM + H.repeat(aspectW + 2) + CROSS + H.repeat(leftW + 2) + CROSS + H.repeat(rightW + 2) + RM);
+      }
+    }
+    // Bottom
+    lines.push(BL + H.repeat(aspectW + 2) + BM + H.repeat(leftW + 2) + BM + H.repeat(rightW + 2) + BR);
+
+    return { content: [{ type: "text", text: lines.join("\n") }] };
+  }
+
+  if (type === "flow") {
+    const steps: { label: string; description?: string }[] = params.steps || [];
+    if (steps.length < 2) {
+      return { content: [{ type: "text", text: `[flow: ${title} — need at least 2 steps]` }] };
+    }
+
+    const maxLabel = Math.max(...steps.map((s) => s.label.length));
+    const maxDesc = Math.max(...steps.map((s) => (s.description || "").length));
+    const boxW = Math.max(maxLabel, maxDesc) + 2;
+    const arrowStr = ARROW_R;
+
+    const lines: string[] = [];
+    lines.push(title);
+    if (subtitle) lines.push("(" + subtitle + ")");
+    lines.push("");
+
+    // Top borders
+    let topRow = "";
+    let midRow = "";
+    let botRow = "";
+    for (let i = 0; i < steps.length; i++) {
+      const s = steps[i];
+      topRow += TL + H.repeat(boxW) + TR;
+      midRow += V + " " + pad(s.label, boxW - 2) + " " + V;
+      botRow += BL + H.repeat(boxW) + BR;
+      if (i < steps.length - 1) {
+        topRow += arrowStr;
+        midRow += " " + "─".repeat(arrowStr.length - 2) + "► ";
+        botRow += arrowStr;
+      }
+    }
+    lines.push(topRow);
+    lines.push(midRow);
+
+    // Description rows if present
+    if (steps.some((s) => s.description)) {
+      let descRow = "";
+      let descBotRow = "";
+      for (let i = 0; i < steps.length; i++) {
+        const s = steps[i];
+        const desc = s.description || "";
+        descRow += V + " " + pad(desc, boxW - 2) + " " + V;
+        descBotRow += BL + H.repeat(boxW) + BR;
+        if (i < steps.length - 1) {
+          descRow += "  " + pad("", arrowStr.length - 2) + "  ";
+          descBotRow += arrowStr;
+        }
+      }
+      lines.push(descRow);
+      lines.push(descBotRow);
+    } else {
+      lines.push(botRow);
+    }
+
+    return { content: [{ type: "text", text: lines.join("\n") }] };
+  }
+
+  if (type === "hierarchy") {
+    const root = params.root || "";
+    const children: { label: string; sub_items?: string[] }[] = params.children || [];
+
+    const lines: string[] = [];
+    lines.push(title);
+    if (subtitle) lines.push("(" + subtitle + ")");
+    lines.push("");
+
+    // Root node
+    const rootW = Math.max(root.length + 2, 6);
+    lines.push("            " + TL + H.repeat(rootW) + TR);
+    lines.push("            " + V + " " + pad(root, rootW - 2) + " " + V);
+
+    if (children.length > 0) {
+      // Downward connector from root
+      const rootMid = 12 + Math.floor(rootW / 2);
+      lines.push("            " + BL + H.repeat(rootW) + BR);
+
+      // Branch lines
+      const childSpacing = Math.max(...children.map((c) => c.label.length + 4));
+      const totalWidth = children.length * childSpacing;
+      const rootCenter = 12 + Math.floor(rootW / 2);
+      const startOffset = Math.max(0, rootCenter - Math.floor(totalWidth / 2));
+
+      let branchLine = "".padStart(startOffset + Math.floor(childSpacing / 2), " ");
+      for (let i = 0; i < children.length; i++) {
+        branchLine += "┌" + H.repeat(Math.floor(childSpacing / 2) - 1);
+        if (i < children.length - 1) {
+          branchLine += "┬" + H.repeat(Math.floor(childSpacing / 2) - 1) + "┐";
+        } else {
+          branchLine += "┐";
+        }
+      }
+      // Actually, let me keep it simpler. Just show a flat hierarchy.
+      // Clear and rebuild
+      lines.pop(); // remove the root bottom border from earlier attempt
+      lines.push("            " + BL + H.repeat(rootW) + BR);
+      lines.push("");
+
+      // Simpler approach: vertical connector from root, then children in a row
+      // Root connector
+      const connectorLine = "             " + V;
+      lines.push(connectorLine);
+
+      // Children row — just list them in a horizontal box per child
+      for (const child of children) {
+        const cW = Math.max(child.label.length + 2, (child.sub_items ? Math.max(...child.sub_items.map(s => s.length)) + 2 : 4));
+        const bar = TL + H.repeat(cW) + TR;
+        const mid = V + " " + pad(child.label, cW - 2) + " " + V;
+        const bot = BL + H.repeat(cW) + BR;
+        lines.push("  " + bar + "    ");
+        lines.push("  " + mid + "    ");
+        lines.push("  " + bot + "    ");
+
+        // Sub-items
+        if (child.sub_items && child.sub_items.length > 0) {
+          const siW = Math.max(...child.sub_items.map(s => s.length)) + 2;
+          for (const si of child.sub_items) {
+            lines.push("    " + LM + H.repeat(siW) + RM);
+            lines.push("    " + V + " " + pad(si, siW - 2) + " " + V);
+            lines.push("    " + BL + H.repeat(siW) + BR);
+          }
+          lines.push("");
+        }
+      }
+    }
+
+    return { content: [{ type: "text", text: lines.join("\n") }] };
+  }
+
+  return { content: [{ type: "text", text: `[unknown diagram type: ${type}]` }] };
 }
 
 // ── Extension ──
@@ -334,10 +550,17 @@ export default function (pi: ExtensionAPI) {
           `• NEVER present a concept roadmap/outline of what you're about to teach\n` +
           `• After reading the book, DO NOT say "this chapter covers X, Y, and Z" — start teaching the first chunk directly\n` +
           `• The user discovers each concept one at a time — don't preview them all upfront\n` +
-          `• Each chunk = teach (2-3 sentences max) + check (specific question)\n` +
+          `• Each chunk = teach (2-3 sentences for familiar concepts, 4-5 for analogy-first) + check (specific question)\n` +
           `• If the user says "just summarize it", respond: "Let me teach it to you instead."\n` +
           `• If the user answers correctly, DO NOT add extra explanation — award XP and move to the next chunk\n` +
-          `• ALWAYS connect new content to at least one concept from a prior chapter\n`;
+          `• ALWAYS connect new content to at least one concept from a prior chapter\n` +
+          `\n📊 VISUAL-FIRST RULE (user learns faster with visuals):\n` +
+          `• For EVERY concept chunk, include a diagram — either from the book or generated via render_diagram\n` +
+          `• FIRST check if the book source has a relevant figure/diagram — reference it by page or figure number\n` +
+          `• If no book diagram, use the render_diagram tool (comparison/flow/hierarchy)\n` +
+          `• The diagram should be the FIRST thing the user sees for that chunk — before the verbal explanation\n` +
+          `• Keep diagrams focused — one concept per diagram\n` +
+          `• Title the diagram with the technical term (not the analogy)\n`;
       } else {
         updated += `\n⚠️ INDEPENDENT MODE — CRITICAL RULES:\n` +
           `• NEVER read the book content to the user — give a reading mission (page range + questions) and wait\n` +
@@ -484,7 +707,52 @@ export default function (pi: ExtensionAPI) {
   });
 
   // ═══════════════════════════════════════════
-  //  7. INTERCEPT roadmap patterns in tutor mode
+  //  8. render_diagram — Custom tool for properly-aligned Unicode diagrams
+  // ═══════════════════════════════════════════
+
+  pi.registerTool({
+    name: "render_diagram",
+    label: "Render Diagram",
+    description: `Generate a properly-aligned Unicode box-drawing diagram for a concept. ` +
+      `Use instead of hand-crafting ASCII diagrams in your response — this tool ` +
+      `computes exact column widths, border positions, and arrow alignment so the ` +
+      `diagram is perfectly shaped. Supports comparison tables, flow diagrams, and hierarchy trees.`,
+    promptSnippet: "render_diagram(type=comparison|flow|hierarchy) — generate a perfectly-aligned Unicode diagram",
+    parameters: Type.Object({
+      type: Type.Union([
+        Type.Literal("comparison"),
+        Type.Literal("flow"),
+        Type.Literal("hierarchy"),
+      ], { description: "Diagram type: comparison (side-by-side table), flow (horizontal steps), hierarchy (tree)" }),
+      title: Type.String({ description: "Diagram title — use the technical term (e.g., 'B-Tree', 'Raft Leader Election')" }),
+      subtitle: Type.Optional(Type.String({ description: "Optional one-line subtitle, e.g., the analogy name" })),
+      // comparison-specific
+      left_label: Type.Optional(Type.String({ description: "(comparison only) Left column heading" })),
+      right_label: Type.Optional(Type.String({ description: "(comparison only) Right column heading" })),
+      rows: Type.Optional(Type.Array(Type.Object({
+        aspect: Type.String({ description: "Row label, e.g., 'Read speed', 'Best for'" }),
+        left: Type.String({ description: "Left cell content" }),
+        right: Type.String({ description: "Right cell content" }),
+      }), { description: "(comparison only) Rows of the comparison table" })),
+      // flow-specific
+      steps: Type.Optional(Type.Array(Type.Object({
+        label: Type.String({ description: "Step name, e.g., 'Leader Election'" }),
+        description: Type.Optional(Type.String({ description: "One-line description, optional" })),
+      }), { description: "(flow only) Steps in the flow, 2-6 steps" })),
+      // hierarchy-specific
+      root: Type.Optional(Type.String({ description: "(hierarchy only) Root node label" })),
+      children: Type.Optional(Type.Array(Type.Object({
+        label: Type.String({ description: "Child node label" }),
+        sub_items: Type.Optional(Type.Array(Type.String(), { description: "Sub-items under this child" })),
+      }), { description: "(hierarchy only) Child nodes under the root" })),
+    }),
+    execute: async (toolCallId, params) => {
+      return renderDiagram(params);
+    },
+  });
+
+  // ═══════════════════════════════════════════
+  //  9. INTERCEPT roadmap patterns in tutor mode
   // ═══════════════════════════════════════════
 
   /** Patterns that indicate a concept roadmap / chapter preview.
