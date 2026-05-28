@@ -174,6 +174,9 @@ interface BookQuestState {
 // ── Diagram renderer ──
 
 function renderDiagram(params: any): { content: { type: string; text: string }[] } {
+  if (!params || typeof params !== "object") {
+    return { content: [{ type: "text", text: "[diagram error: invalid parameters]" }] };
+  }
   // Unicode box-drawing chars
   const H = "─";
   const V = "│";
@@ -190,15 +193,11 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
 
   function pad(s: string, w: number): string {
     const str = String(s ?? "");
-    return str + " ".repeat(Math.max(0, w - str.length));
+    return str.length > w ? str.slice(0, w - 1) + "\u2026" : str + " ".repeat(Math.max(0, w - str.length));
   }
 
   function boxRow(cells: string[], widths: number[]): string {
     return V + " " + cells.map((c, i) => pad(c, widths[i])).join(" " + V + " ") + " " + V;
-  }
-
-  function separatorRow(widths: number[], left: string, mid: string, right: string, join: string): string {
-    return left + widths.map((w) => H.repeat(w + 2)).join(join) + right;
   }
 
   const type = params.type;
@@ -221,15 +220,13 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
     );
     const leftW = Math.max(leftLabel.length, ...rows.map((r) => r.left.length));
     const rightW = Math.max(rightLabel.length, ...rows.map((r) => r.right.length));
-    const totalW = aspectW + leftW + rightW + 11; // borders + padding
-
     const lines: string[] = [];
     // Title bar
-    const titleBarWidth = aspectW + leftW + rightW + 7;
+    const titleBarWidth = aspectW + leftW + rightW + 8;
     lines.push(TL + H.repeat(titleBarWidth) + TR);
-    lines.push(V + " " + pad(title, titleBarWidth) + " " + V);
+    lines.push(V + " " + pad(title, titleBarWidth - 2) + " " + V);
     if (subtitle) {
-      lines.push(V + " " + pad("(" + subtitle + ")", titleBarWidth) + " " + V);
+      lines.push(V + " " + pad("(" + subtitle + ")", titleBarWidth - 2) + " " + V);
     }
     // Header separator
     lines.push(LM + H.repeat(aspectW + 2) + TM + H.repeat(leftW + 2) + TM + H.repeat(rightW + 2) + RM);
@@ -279,7 +276,7 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
       botRow += BL + H.repeat(boxW) + BR;
       if (i < steps.length - 1) {
         topRow += arrowStr;
-        midRow += " " + "─".repeat(arrowStr.length - 2) + "► ";
+        midRow += " " + "─".repeat(arrowStr.length - 3) + "► ";
         botRow += arrowStr;
       }
     }
@@ -296,7 +293,7 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
         descRow += V + " " + pad(desc, boxW - 2) + " " + V;
         descBotRow += BL + H.repeat(boxW) + BR;
         if (i < steps.length - 1) {
-          descRow += "  " + pad("", arrowStr.length - 2) + "  ";
+          descRow += " " + pad("", arrowStr.length - 2) + " ";
           descBotRow += arrowStr;
         }
       }
@@ -324,45 +321,22 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
     lines.push("            " + V + " " + pad(root, rootW - 2) + " " + V);
 
     if (children.length > 0) {
-      // Downward connector from root
-      const rootMid = 12 + Math.floor(rootW / 2);
-      lines.push("            " + BL + H.repeat(rootW) + BR);
-
-      // Branch lines
-      const childSpacing = Math.max(...children.map((c) => c.label.length + 4));
-      const totalWidth = children.length * childSpacing;
-      const rootCenter = 12 + Math.floor(rootW / 2);
-      const startOffset = Math.max(0, rootCenter - Math.floor(totalWidth / 2));
-
-      let branchLine = "".padStart(startOffset + Math.floor(childSpacing / 2), " ");
-      for (let i = 0; i < children.length; i++) {
-        branchLine += "┌" + H.repeat(Math.floor(childSpacing / 2) - 1);
-        if (i < children.length - 1) {
-          branchLine += "┬" + H.repeat(Math.floor(childSpacing / 2) - 1) + "┐";
-        } else {
-          branchLine += "┐";
-        }
-      }
-      // Actually, let me keep it simpler. Just show a flat hierarchy.
-      // Clear and rebuild
-      lines.pop(); // remove the root bottom border from earlier attempt
-      lines.push("            " + BL + H.repeat(rootW) + BR);
+      const indent = Math.max(2, Math.floor(rootW / 2));
+      lines.push(" ".repeat(indent) + BL + H.repeat(rootW) + BR);
       lines.push("");
 
-      // Simpler approach: vertical connector from root, then children in a row
       // Root connector
-      const connectorLine = "             " + V;
-      lines.push(connectorLine);
+      lines.push(" ".repeat(indent + Math.floor(rootW / 2) - 1) + V);
 
-      // Children row — just list them in a horizontal box per child
+      // Children row
       for (const child of children) {
         const cW = Math.max(child.label.length + 2, (child.sub_items ? Math.max(...child.sub_items.map(s => s.length)) + 2 : 4));
         const bar = TL + H.repeat(cW) + TR;
         const mid = V + " " + pad(child.label, cW - 2) + " " + V;
         const bot = BL + H.repeat(cW) + BR;
-        lines.push("  " + bar + "    ");
-        lines.push("  " + mid + "    ");
-        lines.push("  " + bot + "    ");
+        lines.push(" ".repeat(indent) + bar);
+        lines.push(" ".repeat(indent) + mid);
+        lines.push(" ".repeat(indent) + bot);
 
         // Sub-items
         if (child.sub_items && child.sub_items.length > 0) {
@@ -560,7 +534,7 @@ export default function (pi: ExtensionAPI) {
           `• If no book diagram, use the render_diagram tool (comparison/flow/hierarchy)\n` +
           `• The diagram should be the FIRST thing the user sees for that chunk — before the verbal explanation\n` +
           `• Keep diagrams focused — one concept per diagram\n` +
-          `• Title the diagram with the technical term (not the analogy)\n`;
+          `• Title the diagram with the ANALOGY name (e.g., \'The Organized Pantry\'). Technical term goes inside the diagram as a label\n`;
       } else {
         updated += `\n⚠️ INDEPENDENT MODE — CRITICAL RULES:\n` +
           `• NEVER read the book content to the user — give a reading mission (page range + questions) and wait\n` +
@@ -717,14 +691,14 @@ export default function (pi: ExtensionAPI) {
       `Use instead of hand-crafting ASCII diagrams in your response — this tool ` +
       `computes exact column widths, border positions, and arrow alignment so the ` +
       `diagram is perfectly shaped. Supports comparison tables, flow diagrams, and hierarchy trees.`,
-    promptSnippet: "render_diagram(type=comparison|flow|hierarchy) — generate a perfectly-aligned Unicode diagram",
+    promptSnippet: "render_diagram(type=\"comparison\"|\"flow\"|\"hierarchy\") — generate a perfectly-aligned Unicode diagram",
     parameters: Type.Object({
       type: Type.Union([
         Type.Literal("comparison"),
         Type.Literal("flow"),
         Type.Literal("hierarchy"),
       ], { description: "Diagram type: comparison (side-by-side table), flow (horizontal steps), hierarchy (tree)" }),
-      title: Type.String({ description: "Diagram title — use the technical term (e.g., 'B-Tree', 'Raft Leader Election')" }),
+      title: Type.String({ description: "Diagram title — use the ANALOGY name (e.g., 'The Organized Pantry'). Technical term goes in subtitle or inside the diagram" }),
       subtitle: Type.Optional(Type.String({ description: "Optional one-line subtitle, e.g., the analogy name" })),
       // comparison-specific
       left_label: Type.Optional(Type.String({ description: "(comparison only) Left column heading" })),

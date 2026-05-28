@@ -347,7 +347,8 @@ For each concept chunk in the chapter:
   - ❌ *Write paragraphs first, then add a diagram at the end*
 - **Check for book diagrams**: If the book source has a relevant figure/diagram on the current pages, reference it by page number. *"See Figure 3.2 on page 55 — that's a B-Tree in action."*
 - **Choose the right diagram type:** comparison (trade-offs, side-by-side), flow (processes, algorithms), hierarchy (trees, taxonomies)
-- **Diagram title = technical term**, not the analogy name
+- **Diagram title = ANALOGY name** (e.g., "🗄️ The Organized Pantry"). The technical term goes INSIDE the diagram as a label (e.g., "= B-Tree"). The diagram IS the visual form of the analogy — the user sees the analogy picture first, then hears you describe it.
+- **Flow:** Diagram (titled with analogy) → verbal analogy bridge → introduce technical term → persona check
 - **FIRST check if this concept is unfamiliar** (new jargon, not in knowledge graph, low confidence on prerequisites).
 - **If unfamiliar: ALWAYS start with an analogy from Layer 1** (see [Layered Understanding Model](#layered-understanding-model)). Use the [Fun Examples Registry](#fun-examples-registry) for go-to analogies. The analogy is the hook — give it first, then bridge to the technical term.
   - ✅ *"Imagine a restaurant kitchen. Storage is organized by how fast you need things — spices at arm's reach (cache), pantry in the back (disk), freezer in the basement (archive). That's what database storage engines do."* (analogy first, no jargon yet)

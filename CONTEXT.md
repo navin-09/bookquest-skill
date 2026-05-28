@@ -77,8 +77,8 @@ _Avoid_: Asking the user to fill out a "what do you know" form; treating all con
 The default assumption on first session: every concept is `unknown`. Analogy-first is mandatory. The agent adjusts based on the user's behavior (skip commands + quiz performance), not self-declarations.
 
 **Visual-First Teaching**:
-The rule that every concept chunk must include a diagram before any verbal explanation. The agent first checks if the book source has a relevant figure (referenced by page number). If not, it uses the `render_diagram` custom tool to generate a perfectly-aligned Unicode box-drawing diagram. Diagram types: comparison (side-by-side table), flow (horizontal steps), hierarchy (tree).
-_Avoid_: Writing paragraphs first and adding a diagram at the end; hand-crafting ASCII diagrams in text (use render_diagram tool for alignment)
+The rule that every concept chunk must include a diagram before any verbal explanation. The diagram IS the visual form of the analogy — titled with the analogy name (not the technical term). The technical term goes inside the diagram as a label. Flow: diagram (analogy title) → verbal analogy bridge → introduce technical term → persona check. The agent first checks if the book source has a relevant figure; if not, uses `render_diagram` tool.
+_Avoid_: Writing paragraphs first and adding a diagram at the end; titling the diagram with the technical term (defeats analogy-first)
 
 **render_diagram Tool**:
 A custom tool registered by the BookQuest extension. Generates properly-aligned Unicode box-drawing diagrams with exact column widths, border positions, and arrow alignment. Supports three types: comparison table, flow diagram, and hierarchy tree. The tool handles alignment math so the LLM never has to worry about broken boxes or misaligned arrows.
