@@ -564,8 +564,9 @@ export default function (pi: ExtensionAPI) {
           `• For EVERY concept chunk, include a diagram — either from the book or generated via render_diagram\n` +
           `• FIRST check if the book source has a relevant figure/diagram — reference it by page or figure number\n` +
           `• If no book diagram, use the render_diagram tool\n` +
-          `• PREFER flow diagrams over comparison tables — simpler, fit the screen better, work inline with teaching\n` +
-          `• Use comparison tables ONLY when showing trade-offs between 2 specific approaches (B-Tree vs LSM-Tree) — but if the user explicitly asks for a comparison, produce one regardless\n` +
+          `• ALWAYS use flow diagrams by default. Comparison tables only for explicit trade-off comparisons.\n` +
+          `• Flow: simple inline boxes with arrows showing how something works step by step.\n` +
+          `• Comparison: ONLY when comparing 2 specific approaches side-by-side (e.g., B-Tree vs LSM-Tree).\n` +
           `• The diagram should be the FIRST thing the user sees for that chunk — before the verbal explanation\n` +
           `• Keep diagrams focused — one concept per diagram, max 5 rows or 4 steps\n` +
           `• Title the diagram with the ANALOGY name (e.g., \'The Organized Pantry\'). Technical term goes inside the diagram as a label\n`;
@@ -720,18 +721,18 @@ export default function (pi: ExtensionAPI) {
 
   pi.registerTool({
     name: "render_diagram",
-    label: "Render Diagram",
-    description: `Generate a properly-aligned Unicode box-drawing diagram for a concept. ` +
-      `Use instead of hand-crafting ASCII diagrams in your response — this tool ` +
-      `computes exact column widths, border positions, and arrow alignment so the ` +
-      `diagram is perfectly shaped. Prefer flow (simpler, fits screen). Use comparison sparingly for trade-offs.`,
-    promptSnippet: "render_diagram(type=\"flow\") — simple inline flow diagram (or \"comparison\" for trade-offs, \"hierarchy\" for trees)",
+    label: "Render Flow Diagram",
+    description: `Create a simple inline step-by-step flow diagram showing how a process works. ` +
+      `Use for algorithms, sequences, or any multi-step concept. Each step gets its own box ` +
+      `with a label and optional description, connected by arrows. ` +
+      `Avoid comparison tables — they're wide, complex, and usually a flow explains the concept better.`,
+    promptSnippet: "render_diagram(type=\"flow\") — draw a flow diagram showing how a process works step by step",
     parameters: Type.Object({
       type: Type.Union([
         Type.Literal("flow"),
         Type.Literal("comparison"),
         Type.Literal("hierarchy"),
-      ], { description: "Diagram type: flow (PREFERRED — horizontal steps), comparison (side-by-side table, use sparingly), hierarchy (tree)" }),
+      ], { description: "Diagram type: flow (DEFAULT — horizontal steps, use this 90% of the time), comparison (side-by-side table, only for explicit trade-offs), hierarchy (tree)" }),
       title: Type.String({ description: "Diagram title — use the ANALOGY name (e.g., 'The Organized Pantry'). Technical term goes in subtitle or inside the diagram" }),
       subtitle: Type.Optional(Type.String({ description: "Optional one-line subtitle, e.g., the analogy name" })),
       // flow-specific (PREFERRED — simpler, fits screen)
