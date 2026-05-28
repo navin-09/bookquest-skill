@@ -13,6 +13,7 @@ Pick the challenge type based on the chapter's topic:
 | Coding Pattern / Idiom | Refactor or write from scratch |
 | Theory / Concept | Analogy creation or real-world mapping |
 | Tool / Framework | Mini hands-on task |
+| **Any (best for engagement)** | **Teach a Persona** (see type 9) |
 
 ## Challenge Types
 
@@ -50,13 +51,43 @@ Tests deep understanding through metaphor.
 ### 8. Real-World Mapping
 *"The chapter describes [abstract concept]. Find a real-world system that uses it. How does the real system map to the chapter's description?"*
 
+### 9. Teach a Persona (NEW — best for unfamiliar concepts)
+*"You need to teach [concept] to [persona]. What do you say? What questions would they ask? How do you handle their confusion?"*
+
+**How it works:**
+1. Assign a persona (see the [Explain-to-Persona templates in TEACHING.md](./TEACHING.md#explain-to-persona-templates))
+2. The user teaches the concept to that persona
+3. The agent roleplays the persona, asking follow-up questions from that persona's perspective
+4. The user must adapt their explanation on the fly
+
+**Persona roleplay examples:**
+- **As a 10-year-old:** *"But why can't you just use one big list? Isn't that simpler?"*
+- **As a grandma:** *"So it's like knitting? What happens if you drop a stitch?"*
+- **As a PM:** *"How many engineering weeks does this save us?"*
+- **As a junior dev:** *"What's the most common mistake people make with this?"*
+
+**Scoring:**
+- +20 XP if the user successfully teaches the persona (persona stops asking questions)
+- +30 XP if the user handles 3+ follow-up questions from the persona
+- Partial: +10 XP if the persona has to ask for clarification more than once
+
+### 10. Find the Fun (NEW — tests creativity + understanding)
+*"The book explains [concept] using [book's example]. Invent a BETTER analogy from everyday life. Your analogy should be more memorable than the book's."*
+
+**Why this matters:** Creating a new analogy forces the user to understand the concept deeply enough to find novel parallels. It also builds the Fun Examples Registry organically.
+
+**Scoring:**
+- +20 XP for any valid analogy
+- +30 XP if the analogy is notably creative or memorable
+- +10 XP bonus if the user can say where their analogy breaks (identifying the mismatch between analogy and reality)
+
 ## Challenge Difficulty Scaling
 
 | Chapter Position | Difficulty |
 |-----------------|------------|
-| Chapters 1-3 (early) | Types 1, 5, 7 — simpler, more guided |
-| Chapters 4-7 (middle) | Types 2, 3, 6 — moderate, require synthesis |
-| Chapters 8+ (advanced) | Types 3, 4, 8 — complex, require deep understanding |
+| Chapters 1-3 (early) | Types 1, 5, 7, 9 — simpler, more guided |
+| Chapters 4-7 (middle) | Types 2, 3, 6, 10 — moderate, require synthesis |
+| Chapters 8+ (advanced) | Types 3, 4, 8, 9 — complex, require deep understanding |
 | Boss Fights | Combination of all types across all chapters in section |
 
 ## Scoring Challenges
