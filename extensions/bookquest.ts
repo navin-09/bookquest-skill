@@ -197,12 +197,11 @@ function renderDiagram(params: any): { content: { type: string; text: string }[]
   function pad(s: string, w: number): string {
     const str = String(s ?? "");
     if (str.length <= w) return str + " ".repeat(Math.max(0, w - str.length));
-    // Middle truncation — preserves both start and end of essential content
-    // 60/40 split biases toward preserving the end (suffixes, identifiers)
-    if (w <= 5) return str.slice(0, w - 1) + "\u2026";
-    const startLen = Math.ceil((w - 1) * 0.55);
-    const endLen = (w - 1) - startLen;
-    return str.slice(0, startLen) + "\u2026" + str.slice(str.length - endLen);
+    // Content wider than box — show it raw without truncation.
+    // The diagram borders will break visually, but the MEANING is preserved.
+    // The LLM is instructed to keep labels short — if it doesn't, the
+    // visible overflow trains it to write shorter labels next time.
+    return str;
   }
 
   /** Cap column widths proportionally so total doesn't exceed maxAvailable */
@@ -737,9 +736,9 @@ export default function (pi: ExtensionAPI) {
       subtitle: Type.Optional(Type.String({ description: "Optional one-line subtitle, e.g., the analogy name" })),
       // flow-specific (PREFERRED — simpler, fits screen)
       steps: Type.Optional(Type.Array(Type.Object({
-        label: Type.String({ description: "Step name, e.g., 'Leader Election'" }),
-        description: Type.Optional(Type.String({ description: "One-line description, optional" })),
-      }), { description: "(flow only) Steps in the flow, 2-4 steps (keeps diagrams compact)" })),
+        label: Type.String({ description: "SHORT step name, 3-5 words max. The diagram is for quick visual reference — you explain the details verbally. Examples: 'Leader Election', 'SQL Parses'. NOT: 'The system elects a leader through a voting process' (put that in your verbal explanation)" }),
+        description: Type.Optional(Type.String({ description: "Optional one-liner, 5-8 words max. Again, details go in the verbal explanation, not the diagram." })),
+      }), { description: "(flow only) Flow steps. Keep labels SHORT (3-5 words). The verbal explanation provides all details." })),
       // comparison-specific (use sparingly — only for trade-offs)
       left_label: Type.Optional(Type.String({ description: "(comparison only) Left column heading" })),
       right_label: Type.Optional(Type.String({ description: "(comparison only) Right column heading" })),
