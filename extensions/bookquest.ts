@@ -617,6 +617,43 @@ export default function (pi: ExtensionAPI) {
           );
           return { message: { ...event.message, content: cleaned } };
         }
+
+        // ── Post-answer summarization detection ──
+        // Catches summary framing the LLM adds AFTER answering a checkpoint
+        // (e.g., "The mental model is...", "In other words...", "Essentially...")
+        // that does the thinking for the user instead of letting them digest.
+        const SUMMARY_FRAMING_PATTERNS = [
+          /^\s*The mental model[^\n]*:.*/gm,
+          /^\s*The key insight[^\n]*:.*/gm,
+          /^\s*In other words[^\n]*:.*/gm,
+          /^\s*To summarize[^\n]*:.*/gm,
+          /^\s*(?:Essentially|Basically|Put simply|Simplified)[^\n]*:.*/gm,
+          /^\s*The (?:real |fundamental |core )?difference[^\n]*:.*/gm,
+          /^\s*The takeaway[^\n]*:.*/gm,
+          /^\s*What this means[^\n]*:.*/gm,
+          /^\s*(?:So |Thus )?(?:the idea is|the concept is|what we've learned is|what matters is)[^\n]*:.*/gm,
+        ];
+
+        let cleaned2 = cleaned;
+        let summaryMatch = false;
+        for (const pattern of SUMMARY_FRAMING_PATTERNS) {
+          const before = cleaned2;
+          cleaned2 = cleaned2.replace(pattern, "[📖 digested by agent — removed summary]");
+          if (cleaned2 !== before) summaryMatch = true;
+        }
+
+        if (summaryMatch) {
+          pi.sendUserMessage(
+            "[BookQuest correction] You added a summary after the teaching/checkpoint. " +
+            "Summaries do the thinking for the user. " +
+            "After teaching a concept and checking understanding, either ask a follow-up " +
+            "or move to the next chunk. Never wrap up with framing like 'the mental model is...' " +
+            "or 'in other words...'. Let the user's own understanding be the summary."
+          );
+          if (cleaned2 !== content) {
+            return { message: { ...event.message, content: cleaned2 } };
+          }
+        }
       }
   });
 
