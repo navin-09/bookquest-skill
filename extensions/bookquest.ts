@@ -779,7 +779,8 @@ export default function (pi: ExtensionAPI) {
       }), { description: "(hierarchy only) Child nodes under the root, max 6 children" })),
     }),
     execute: async (toolCallId, params) => {
-      return renderDiagram(params);
+      const result = renderDiagram(params);
+      return result.content?.[0]?.text ?? "[diagram error]";
     },
   });
 
