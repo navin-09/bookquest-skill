@@ -47,6 +47,7 @@ export function buildGamificationBlock(
   game: GameState,
   registry: any | null,
   challenge: DailyChallenge | null,
+  todayStr?: string,
 ): string {
   const comboVisual = buildComboVisual(game.comboCount, game.lastComboLabel, game.lastComboMultiplier);
 
@@ -75,7 +76,7 @@ export function buildGamificationBlock(
 
   // Daily challenge
   if (registry) {
-    const today = new Date().toISOString().split("T")[0];
+    const today = todayStr ?? new Date().toISOString().split("T")[0];
     const dc = registry.globalStats?.dailyChallenge || {};
     if (dc.date !== today || !dc.completed) {
       if (challenge) {

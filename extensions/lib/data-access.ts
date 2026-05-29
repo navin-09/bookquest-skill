@@ -37,27 +37,62 @@ export interface DailyChallenge {
   bonusXp: number;
 }
 
+/** Shape of the global registry.json file. */
+export interface RegistryData {
+  books?: BookMeta[];
+  globalStats?: {
+    streak?: { current: number; lastSessionDate?: string };
+    streakShields?: number;
+    dailyChallenge?: { date: string; completed: boolean };
+    prestigeLevel?: number;
+  };
+}
+
+/** Shape of a single book's progress file. */
+export interface BookProgress {
+  book?: {
+    slug: string;
+    title: string;
+    totalChapters: number;
+    defaultMode?: "independent" | "tutor";
+  };
+  progress?: {
+    currentChapter?: number;
+    completedChapters?: { chapter: number; mode?: string; score?: number }[];
+    skillTree?: any[];
+  };
+  gamification?: {
+    xp: number;
+    level: number;
+    title: string;
+    mastery: number;
+  };
+  knowledgeGraph?: { concept: string; confidence?: number }[];
+  startedAt?: string;
+  completedAt?: string;
+}
+
 export interface BookDataAccess {
   /** Load the global/active registry. Returns null if not found or corrupt. */
-  loadRegistry(): any | null;
+  loadRegistry(): RegistryData | null;
 
   /** Save the registry to disk. Creates intermediate dirs if needed. */
-  saveRegistry(registry: any): void;
+  saveRegistry(registry: RegistryData): void;
 
   /** List all active books from the registry. */
   getActiveBooks(): BookMeta[];
 
   /** Load progress for a single book slug. Returns null if missing or corrupt slug. */
-  loadBookProgress(slug: string): any | null;
+  loadBookProgress(slug: string): BookProgress | null;
 
   /** Save progress for a single book slug. Creates dirs if needed. */
-  saveBookProgress(slug: string, data: any): void;
+  saveBookProgress(slug: string, data: BookProgress): void;
 
   /** Today's date string in YYYY-MM-DD format. */
   todayStr(): string;
 
   /** Pick a daily challenge from the pool, seeded deterministically by date. */
-  pickDailyChallenge(registry: any): DailyChallenge | null;
+  pickDailyChallenge(registry: RegistryData): DailyChallenge | null;
 }
 
 // ── Helpers shared by all adapters ──
@@ -76,6 +111,38 @@ export function seededRandom(seed: string): number {
   return (Math.abs(hash) % 1000) / 1000;
 }
 
+// ── Shared pickDailyChallenge logic (single source of truth) ──
+
+export function pickDailyChallengeFromPool(
+  todayStr: string,
+  registryBooks: { slug: string }[] | undefined,
+  loadProgress: (slug: string) => any | null
+): DailyChallenge | null {
+  if (!registryBooks || registryBooks.length === 0) return null;
+  const seed = `bookquest-daily-${todayStr}`;
+  const idx = Math.floor(seededRandom(seed) * DAILY_CHALLENGE_POOL.length);
+  const template = DAILY_CHALLENGE_POOL[idx];
+
+  const allConcepts: string[] = [];
+  for (const book of registryBooks) {
+    const progress = loadProgress(book.slug);
+    if (progress?.knowledgeGraph) {
+      for (const entry of progress.knowledgeGraph) {
+        allConcepts.push(entry.concept);
+      }
+    }
+  }
+  const concept = allConcepts.length > 0
+    ? allConcepts[Math.floor(seededRandom(seed + "-concept") * allConcepts.length)]
+    : "the chapter concept";
+
+  return {
+    type: template.type,
+    prompt: template.promptTemplate.replace("{concept}", concept),
+    bonusXp: template.bonusXp,
+  };
+}
+
 const DAILY_CHALLENGE_POOL = [
   { type: "explain-persona", promptTemplate: "Explain {concept} to a 10-year-old. No jargon.", bonusXp: 15 },
   { type: "concept-connection", promptTemplate: "Connect {concept} to something you learned in a previous chapter.", bonusXp: 15 },
@@ -87,36 +154,29 @@ const DAILY_CHALLENGE_POOL = [
 // ── Default File-based Adapter ──
 
 export function createFileDataAccess(): BookDataAccess {
-  function getProgressDir(): string {
+  function getDataDir(): string {
     const cwd = process.cwd();
     const projectDir = join(cwd, ".bookquest");
     if (existsSync(projectDir)) return projectDir;
     return PROGRESS_DIR_DEFAULT;
   }
 
-  function getProgressDirForBook(slug: string): string {
-    if (!isValidSlug(slug)) return PROGRESS_DIR_DEFAULT;
-    const projectDir = join(process.cwd(), ".bookquest", `${slug}.json`);
-    if (existsSync(projectDir)) return join(process.cwd(), ".bookquest");
-    return PROGRESS_DIR_DEFAULT;
-  }
-
   return {
-    loadRegistry(): any | null {
-      const progressDir = getProgressDir();
-      const regPath = progressDir === PROGRESS_DIR_DEFAULT
+    loadRegistry(): RegistryData | null {
+      const dataDir = getDataDir();
+      const regPath = dataDir === PROGRESS_DIR_DEFAULT
         ? REGISTRY_PATH
-        : join(progressDir, "registry.json");
+        : join(dataDir, "registry.json");
       if (!existsSync(regPath)) return null;
       try { return JSON.parse(readFileSync(regPath, "utf-8")); }
       catch { return null; }
     },
 
-    saveRegistry(registry: any): void {
-      const progressDir = getProgressDir();
-      const regPath = progressDir === PROGRESS_DIR_DEFAULT
+    saveRegistry(registry: RegistryData): void {
+      const dataDir = getDataDir();
+      const regPath = dataDir === PROGRESS_DIR_DEFAULT
         ? REGISTRY_PATH
-        : join(progressDir, "registry.json");
+        : join(dataDir, "registry.json");
       const dir = dirname(regPath);
       if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
       writeFileSync(regPath, JSON.stringify(registry, null, 2));
@@ -128,54 +188,30 @@ export function createFileDataAccess(): BookDataAccess {
       return (reg.books || []).filter((b: any) => b.slug);
     },
 
-    loadBookProgress(slug: string): any | null {
+    loadBookProgress(slug: string): BookProgress | null {
       if (!isValidSlug(slug)) return null;
-      const baseDir = getProgressDirForBook(slug);
-      const path = join(baseDir, `${slug}.json`);
+      const dataDir = getDataDir();
+      const path = join(dataDir, `${slug}.json`);
       if (!existsSync(path)) return null;
       try { return JSON.parse(readFileSync(path, "utf-8")); }
       catch { return null; }
     },
 
-    saveBookProgress(slug: string, data: any): void {
+    saveBookProgress(slug: string, data: BookProgress): void {
       if (!isValidSlug(slug)) return;
-      const baseDir = getProgressDirForBook(slug);
-      if (!existsSync(baseDir)) {
-        mkdirSync(baseDir, { recursive: true });
+      const dataDir = getDataDir();
+      if (!existsSync(dataDir)) {
+        mkdirSync(dataDir, { recursive: true });
       }
-      writeFileSync(join(baseDir, `${slug}.json`), JSON.stringify(data, null, 2));
+      writeFileSync(join(dataDir, `${slug}.json`), JSON.stringify(data, null, 2));
     },
 
     todayStr(): string {
       return new Date().toISOString().split("T")[0];
     },
 
-    pickDailyChallenge(registry: any): DailyChallenge | null {
-      if (!registry || !registry.books || registry.books.length === 0) return null;
-      const today = this.todayStr();
-      const seed = `bookquest-daily-${today}`;
-      const idx = Math.floor(seededRandom(seed) * DAILY_CHALLENGE_POOL.length);
-      const template = DAILY_CHALLENGE_POOL[idx];
-
-      // Pick a random concept from any book's knowledge graph
-      const allConcepts: string[] = [];
-      for (const book of registry.books) {
-        const progress = this.loadBookProgress(book.slug);
-        if (progress?.knowledgeGraph) {
-          for (const entry of progress.knowledgeGraph) {
-            allConcepts.push(entry.concept);
-          }
-        }
-      }
-      const concept = allConcepts.length > 0
-        ? allConcepts[Math.floor(seededRandom(seed + "-concept") * allConcepts.length)]
-        : "the chapter concept";
-
-      return {
-        type: template.type,
-        prompt: template.promptTemplate.replace("{concept}", concept),
-        bonusXp: template.bonusXp,
-      };
+    pickDailyChallenge(registry: RegistryData): DailyChallenge | null {
+      return pickDailyChallengeFromPool(this.todayStr(), registry?.books, (slug) => this.loadBookProgress(slug));
     },
   };
 }
@@ -219,29 +255,7 @@ export function createInMemoryDataAccess(
     },
 
     pickDailyChallenge(registry: any): DailyChallenge | null {
-      // Delegates to the shared implementation logic
-      if (!registry || !registry.books || registry.books.length === 0) return null;
-      const today = this.todayStr();
-      const seed = `bookquest-daily-${today}`;
-      const idx = Math.floor(seededRandom(seed) * DAILY_CHALLENGE_POOL.length);
-      const template = DAILY_CHALLENGE_POOL[idx];
-      const allConcepts: string[] = [];
-      for (const book of registry.books) {
-        const progress = this.loadBookProgress(book.slug);
-        if (progress?.knowledgeGraph) {
-          for (const entry of progress.knowledgeGraph) {
-            allConcepts.push(entry.concept);
-          }
-        }
-      }
-      const concept = allConcepts.length > 0
-        ? allConcepts[Math.floor(seededRandom(seed + "-concept") * allConcepts.length)]
-        : "the chapter concept";
-      return {
-        type: template.type,
-        prompt: template.promptTemplate.replace("{concept}", concept),
-        bonusXp: template.bonusXp,
-      };
+      return pickDailyChallengeFromPool(this.todayStr(), registry?.books, (slug) => this.loadBookProgress(slug));
     },
   };
 }

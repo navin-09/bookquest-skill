@@ -120,7 +120,7 @@ export function boxRowMulti(cells: string[], widths: number[]): string[] {
 
 const ARROW_R = " ──► ";
 
-function renderComparison(params: ComparisonParams): BlockResult {
+function renderComparison(params: ComparisonParams, maxWidth?: number): BlockResult {
   const rows = params.rows || [];
   const leftLabel = params.left_label || "";
   const rightLabel = params.right_label || "";
@@ -128,7 +128,7 @@ function renderComparison(params: ComparisonParams): BlockResult {
     return { content: [{ type: "text", text: `[comparison: ${params.title} — no rows]` }] };
   }
 
-  const MAX_WIDTH = (process.stdout.columns || 80) - 2;
+  const MAX_WIDTH = (maxWidth ?? process.stdout.columns ?? 80) - 2;
 
   let aspectW = Math.max(
     "Aspect".length,
@@ -164,13 +164,13 @@ function renderComparison(params: ComparisonParams): BlockResult {
   return { content: [{ type: "text", text: lines.join("\n") }] };
 }
 
-function renderFlow(params: FlowParams): BlockResult {
+function renderFlow(params: FlowParams, maxWidth?: number): BlockResult {
   const steps = params.steps || [];
   if (steps.length < 2) {
     return { content: [{ type: "text", text: `[flow: ${params.title} — need at least 2 steps]` }] };
   }
 
-  const MAX_WIDTH = (process.stdout.columns || 80) - 2;
+  const MAX_WIDTH = (maxWidth ?? process.stdout.columns ?? 80) - 2;
 
   const maxLabel = Math.max(...steps.map((s) => s.label.length));
   const maxDesc = Math.max(...steps.map((s) => (s.description || "").length));
@@ -287,9 +287,9 @@ export function renderDiagram(params: DiagramParams): BlockResult {
 
   switch (params.type) {
     case "comparison":
-      return renderComparison(params);
+      return renderComparison(params, (params as any).maxWidth);
     case "flow":
-      return renderFlow(params);
+      return renderFlow(params, (params as any).maxWidth);
     case "hierarchy":
       return renderHierarchy(params);
     default:
