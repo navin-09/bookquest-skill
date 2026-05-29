@@ -593,7 +593,7 @@ into the system prompt. **You read the state and apply it.**
 | 10+ | 3x | 🔥🔥🔥 |
 
 **When awarding XP on a correct answer:**
-1. Read the current combo multiplier from the `Active Gamification Bonuses` section
+1. Read the current combo multiplier from the `Active Bonuses` section
    of the system prompt
 2. Apply it: `XP = base × multiplier`
 3. Display it: *"+15 XP (10 × 1.5x combo)!"*
@@ -608,10 +608,10 @@ into the system prompt. **You read the state and apply it.**
 ### Critical Hits & Variable Rewards (extension-managed)
 
 The extension pre-rolls critical hits and mystery boxes. You see them in the
-`Active Gamification Bonuses` section of the system prompt.
+`Active Bonuses` section of the system prompt.
 
 **💥 Critical Hit (20% chance per correct answer):**
-- You'll see: `💥 Critical Hit loaded — next correct answer gets 2x XP on top of combo!`
+- You'll see: `💥 Critical Hit: 2x next!`
 - When the user answers correctly, announce it: *"💥 Critical Hit! That's 2x on top of your combo!"*
 - The extra multiplier compounds: `XP = base × comboMultiplier × critMultiplier`
 - Example: base 10, 1.5x combo, 2x crit = 30 XP
@@ -620,7 +620,7 @@ The extension pre-rolls critical hits and mystery boxes. You see them in the
 **🎆 Legendary Insight (1% chance):** 5x multiplier
 
 **🎁 Mystery Box (15% chance per correct answer):**
-- You'll see: `🎁 Mystery Box available — next correct answer unlocks bonus +N XP`
+- You'll see: `🎁 Mystery Box: +N XP next!`
 - When the user answers correctly, announce it: *"🎁 Mystery Box! +12 bonus XP for that sharp thinking!"*
 - Mystery box bonus is flat (not multiplied), awarded on top of the answer's XP
 
@@ -636,10 +636,10 @@ passing boss fights.
 ### Daily Challenge
 
 At the start of each session, the extension injects a daily challenge into the
-system prompt (under `🌅 Daily Challenge`). **Present it to the user** as part of
+system prompt (under `🌅 Daily`). **Present it to the user** as part of
 the session opening.
 
-- *"🌅 Daily Challenge: [prompt]. Complete it this session for +N bonus XP!"*
+- *"🌅 Daily: [prompt] (+N XP this session)"*
 - The challenge should feel like a bonus objective, not a mandatory task
 - When the user completes the challenge, award the bonus XP on top of normal rewards
 - The challenge is valid only for today's session — tomorrow brings a new one

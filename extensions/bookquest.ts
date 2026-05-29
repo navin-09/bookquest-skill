@@ -439,7 +439,7 @@ export default function (pi: ExtensionAPI) {
       if (mode === "tutor") {
         updated += `\n⚠️ TUTOR MODE RULES:\n` +
           `• One chunk at a time: teach (2-3 sentences) → check → next. Never two in sequence.\n` +
-          `• Never present a roadmap/outline of what you're about to teach. Start the first chunk directly.\n` +
+          `• Never present a roadmap/outline (e.g., "this chapter covers X, Y, Z"). Start teaching the first chunk directly.\n` +
           `• If the user says "just summarize", respond: "Let me teach it to you instead."\n` +
           `• Correct answer → call award_xp with base amount, then move to next chunk. No extra explanation.\n` +
           `• Connect new content to at least one prior chapter concept.\n` +

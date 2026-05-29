@@ -78,8 +78,7 @@ export function buildGamificationBlock(
   }
 
   if (registry?.globalStats?.streakShields > 0) {
-    const n = registry.globalStats.streakShields;
-    block += `• 🛡️ Shields: ${n}\n`;
+    block += `• 🛡️ Shields: ${registry.globalStats.streakShields} (protects streak)\n`;
   }
 
   if (registry?.globalStats?.streak?.current > 0) {
