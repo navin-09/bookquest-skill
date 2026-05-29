@@ -30,10 +30,14 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
-import { homedir } from "os";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+
+import { createFileDataAccess } from "./data-access.js";
+import type { BookDataAccess } from "./data-access.js";
+import { renderDiagram } from "./diagram-renderer.js";
+import { buildGamificationBlock } from "./gamification-display.js";
+import type { GameState } from "./gamification-display.js";
 
 // ── Helpers for path resolution ──
 const __filename = fileURLToPath(import.meta.url);
@@ -41,8 +45,6 @@ const __dirname = dirname(__filename);
 const PACKAGE_ROOT = join(__dirname, "..");
 
 // ── Paths ──
-const PROGRESS_DIR_DEFAULT = join(homedir(), ".pi", "book-progress");
-const REGISTRY_PATH = join(PROGRESS_DIR_DEFAULT, "registry.json");
 const LEVEL_CALC_SCRIPT = join(PACKAGE_ROOT, "scripts", "level-calc.js");
 
 // ── Gamification Constants ──
@@ -64,14 +66,6 @@ const MYSTERY_BOX_CHANCE = 0.15; // 15%
 const MYSTERY_BOX_MIN_XP = 5;
 const MYSTERY_BOX_MAX_XP = 25;
 
-const DAILY_CHALLENGE_POOL = [
-  { type: "explain-persona", promptTemplate: "Explain {concept} to a 10-year-old. No jargon.", bonusXp: 15 },
-  { type: "concept-connection", promptTemplate: "Connect {concept} to something you learned in a previous chapter.", bonusXp: 15 },
-  { type: "real-world", promptTemplate: "Find a real-world system that uses {concept}.", bonusXp: 15 },
-  { type: "analogy-invent", promptTemplate: "Invent a NEW analogy for {concept} from everyday life.", bonusXp: 20 },
-  { type: "teach-back-mini", promptTemplate: "Teach {concept} to a non-tech friend in 2 sentences.", bonusXp: 15 },
-];
-
 // ── Hard rules reminder injected every turn ──
 const HARD_RULES_REMINDER = `
 [BOOKQUEST HARD RULES — enforced by extension]
@@ -84,66 +78,7 @@ const HARD_RULES_REMINDER = `
 • ALWAYS present the skill tree at session start
 `.trim();
 
-// ── Helpers ──
-
-function getProgressDir(): string {
-  // First check per-project
-  const cwd = process.cwd();
-  const projectDir = join(cwd, ".bookquest");
-  if (existsSync(projectDir)) return projectDir;
-  return PROGRESS_DIR_DEFAULT;
-}
-
-function getRegistry(): any {
-  const progressDir = getProgressDir();
-  const regPath = progressDir === PROGRESS_DIR_DEFAULT
-    ? REGISTRY_PATH
-    : join(progressDir, "registry.json");
-  if (!existsSync(regPath)) return null;
-  try { return JSON.parse(readFileSync(regPath, "utf-8")); }
-  catch { return null; }
-}
-
-function saveRegistry(registry: any): void {
-  const progressDir = getProgressDir();
-  const regPath = progressDir === PROGRESS_DIR_DEFAULT
-    ? REGISTRY_PATH
-    : join(progressDir, "registry.json");
-  const dir = dirname(regPath);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  writeFileSync(regPath, JSON.stringify(registry, null, 2));
-}
-
-function getActiveBooks(): { slug: string; title: string; source: string }[] {
-  const reg = getRegistry();
-  if (!reg) return [];
-  return (reg.books || []).filter((b: any) => b.slug);
-}
-
-function getProgressDirForBook(slug: string): string {
-  if (!isValidSlug(slug)) return PROGRESS_DIR_DEFAULT;
-  const projectDir = join(process.cwd(), ".bookquest", `${slug}.json`);
-  if (existsSync(projectDir)) return join(process.cwd(), ".bookquest");
-  return PROGRESS_DIR_DEFAULT;
-}
-
-function loadProgress(slug: string): any | null {
-  if (!isValidSlug(slug)) return null;
-  const baseDir = getProgressDirForBook(slug);
-  const path = join(baseDir, `${slug}.json`);
-  if (!existsSync(path)) return null;
-  try { return JSON.parse(readFileSync(path, "utf-8")); }
-  catch { return null; }
-}
-
-function saveProgress(slug: string, data: any): void {
-  if (!isValidSlug(slug)) return;
-  const baseDir = getProgressDirForBook(slug);
-  if (!existsSync(baseDir)) {
-    mkdirSync(baseDir, { recursive: true });
-  }
-  writeFileSync(join(baseDir, `${slug}.json`), JSON.stringify(data, null, 2));
-}
+// ── Compute level (calls external script, falls back) ──
 
 async function computeLevel(pi: ExtensionAPI, xp: number): Promise<any> {
   try {
@@ -163,13 +98,11 @@ async function computeLevel(pi: ExtensionAPI, xp: number): Promise<any> {
     ];
     const BASE = 3000;
 
-    // Compute mastery XP threshold for a given level n (n >= 9)
     const getMasteryThreshold = (n: number): number => {
       return Math.round(BASE * Math.pow(1.4, n - 8) / 50) * 50;
     };
 
     if (xp < BASE) {
-      // Level 1-8: use static table
       let current = FALLBACK_LEVELS[0];
       for (const l of FALLBACK_LEVELS) {
         if (xp >= l.xp) current = l;
@@ -186,7 +119,6 @@ async function computeLevel(pi: ExtensionAPI, xp: number): Promise<any> {
       };
     }
 
-    // Mastery levels (Level 9+)
     let level = 8;
     let threshold = BASE;
     while (xp >= threshold) {
@@ -227,24 +159,6 @@ function renderSkillTree(tree: any[]): string {
     .join("\n");
 }
 
-function isValidSlug(slug: string): boolean {
-  return /^[a-z0-9][a-z0-9-]*$/.test(slug);
-}
-
-function todayStr(): string {
-  return new Date().toISOString().split("T")[0];
-}
-
-function seededRandom(seed: string): number {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    const chr = seed.charCodeAt(i);
-    hash = ((hash << 5) - hash) + chr;
-    hash |= 0;
-  }
-  return (Math.abs(hash) % 1000) / 1000;
-}
-
 // ── Combo Logic ──
 
 function getComboMultiplier(count: number): { label: string; multiplier: number } {
@@ -254,47 +168,6 @@ function getComboMultiplier(count: number): { label: string; multiplier: number 
     else break;
   }
   return { label: result.label, multiplier: result.multiplier };
-}
-
-// ── Daily Challenge ──
-
-function pickDailyChallenge(registry: any): { type: string; prompt: string; bonusXp: number } | null {
-  if (!registry || !registry.books || registry.books.length === 0) return null;
-  const today = todayStr();
-  const seed = `bookquest-daily-${today}`;
-  const idx = Math.floor(seededRandom(seed) * DAILY_CHALLENGE_POOL.length);
-  const template = DAILY_CHALLENGE_POOL[idx];
-
-  // Pick a random concept from any book's knowledge graph
-  const allConcepts: string[] = [];
-  for (const book of registry.books) {
-    const progress = loadProgress(book.slug);
-    if (progress?.knowledgeGraph) {
-      for (const entry of progress.knowledgeGraph) {
-        allConcepts.push(entry.concept);
-      }
-    }
-  }
-  const concept = allConcepts.length > 0
-    ? allConcepts[Math.floor(seededRandom(seed + "-concept") * allConcepts.length)]
-    : "the chapter concept";
-
-  return {
-    type: template.type,
-    prompt: template.promptTemplate.replace("{concept}", concept),
-    bonusXp: template.bonusXp,
-  };
-}
-
-// ── Generate level-up splash ──
-
-function renderLevelUpSplash(level: number, title: string, mastery: number): string {
-  const maxW = Math.max(level.toString().length + title.length + 3, 20);
-  const top = "╔" + "═".repeat(maxW + 2) + "╗";
-  const mid1 = "║" + " ".repeat(Math.floor((maxW - 9) / 2)) + "🎉 LEVEL UP!" + " ".repeat(Math.ceil((maxW - 9) / 2)) + "║";
-  const mid2 = "║" + " ".repeat(Math.floor((maxW - title.length - 2) / 2)) + `Lv.${level} ${title}` + " ".repeat(Math.ceil((maxW - title.length - 2) / 2)) + "║";
-  const bot = "╚" + "═".repeat(maxW + 2) + "╝";
-  return `${top}\n${mid1}\n${mid2}\n${bot}`;
 }
 
 // ── State ──
@@ -343,236 +216,11 @@ function freshGamificationEngine(): GamificationEngine {
   };
 }
 
-// ── Diagram renderer ──
-
-function renderDiagram(params: any): { content: { type: string; text: string }[] } {
-  if (!params || typeof params !== "object") {
-    return { content: [{ type: "text", text: "[diagram error: invalid parameters]" }] };
-  }
-  const H = "─";
-  const V = "│";
-  const TL = "┌";
-  const TR = "┐";
-  const BL = "└";
-  const BR = "┘";
-  const TM = "┬";
-  const BM = "┴";
-  const LM = "├";
-  const RM = "┤";
-  const CROSS = "┼";
-  const ARROW_R = " ──► ";
-
-  const MAX_WIDTH = (process.stdout.columns || 80) - 2;
-
-  function pad(s: string, w: number): string {
-    const str = String(s ?? "");
-    if (str.length <= w) return str + " ".repeat(Math.max(0, w - str.length));
-    return str;
-  }
-
-  function capWidths(widths: number[], maxAvailable: number): number[] {
-    const total = widths.reduce((a, b) => a + b, 0);
-    if (total <= maxAvailable) return widths;
-    const ratio = maxAvailable / total;
-    return widths.map((w) => Math.max(10, Math.floor(w * ratio)));
-  }
-
-  function boxRow(cells: string[], widths: number[]): string {
-    return V + " " + cells.map((c, i) => pad(c, widths[i])).join(" " + V + " ") + " " + V;
-  }
-
-  function wrapText(text: string, maxWidth: number): string[] {
-    if (text.length <= maxWidth) return [text];
-    const words = text.split(" ");
-    const lines: string[] = [];
-    let current = "";
-    for (const word of words) {
-      if ((current + " " + word).trim().length <= maxWidth) {
-        current = (current + " " + word).trim();
-      } else {
-        if (current) lines.push(current);
-        current = word;
-      }
-    }
-    if (current) lines.push(current);
-    return lines.length > 0 ? lines : [text];
-  }
-
-  function boxRowMulti(cells: string[], widths: number[]): string[] {
-    const wrapped = cells.map((c, i) => wrapText(c, widths[i]));
-    const maxLines = Math.max(...wrapped.map((w) => w.length));
-    const lines: string[] = [];
-    for (let line = 0; line < maxLines; line++) {
-      const rowCells = wrapped.map((w) => (line < w.length ? w[line] : ""));
-      lines.push(boxRow(rowCells, widths));
-    }
-    return lines;
-  }
-
-  const type = params.type;
-  const title = params.title || "";
-  const subtitle = params.subtitle;
-
-  if (type === "comparison") {
-    const rows: { aspect: string; left: string; right: string }[] = params.rows || [];
-    const leftLabel = params.left_label || "";
-    const rightLabel = params.right_label || "";
-    if (rows.length === 0) {
-      return { content: [{ type: "text", text: `[comparison: ${title} — no rows]` }] };
-    }
-
-    let aspectW = Math.max(
-      "Aspect".length,
-      ...rows.map((r) => r.aspect.length),
-      title.length > 40 ? 40 : title.length
-    );
-    let leftW = Math.max(leftLabel.length, ...rows.map((r) => r.left.length));
-    let rightW = Math.max(rightLabel.length, ...rows.map((r) => r.right.length));
-    const capped = capWidths([aspectW, leftW, rightW], MAX_WIDTH - 10);
-    aspectW = capped[0]; leftW = capped[1]; rightW = capped[2];
-    const lines: string[] = [];
-    const titleBarWidth = aspectW + leftW + rightW + 8;
-    lines.push(TL + H.repeat(titleBarWidth) + TR);
-    lines.push(V + " " + pad(title, titleBarWidth - 2) + " " + V);
-    if (subtitle) {
-      lines.push(V + " " + pad("(" + subtitle + ")", titleBarWidth - 2) + " " + V);
-    }
-    lines.push(LM + H.repeat(aspectW + 2) + TM + H.repeat(leftW + 2) + TM + H.repeat(rightW + 2) + RM);
-    const hdrW = [aspectW, leftW, rightW];
-    lines.push(boxRow(["Aspect", leftLabel, rightLabel], hdrW));
-    lines.push(LM + H.repeat(aspectW + 2) + CROSS + H.repeat(leftW + 2) + CROSS + H.repeat(rightW + 2) + RM);
-    for (let i = 0; i < rows.length; i++) {
-      const r = rows[i];
-      const multiLines = boxRowMulti([r.aspect, r.left, r.right], hdrW);
-      for (const ml of multiLines) {
-        lines.push(ml);
-      }
-      if (i < rows.length - 1) {
-        lines.push(LM + H.repeat(aspectW + 2) + CROSS + H.repeat(leftW + 2) + CROSS + H.repeat(rightW + 2) + RM);
-      }
-    }
-    lines.push(BL + H.repeat(aspectW + 2) + BM + H.repeat(leftW + 2) + BM + H.repeat(rightW + 2) + BR);
-    return { content: [{ type: "text", text: lines.join("\n") }] };
-  }
-
-  if (type === "flow") {
-    const steps: { label: string; description?: string }[] = params.steps || [];
-    if (steps.length < 2) {
-      return { content: [{ type: "text", text: `[flow: ${title} — need at least 2 steps]` }] };
-    }
-
-    const maxLabel = Math.max(...steps.map((s) => s.label.length));
-    const maxDesc = Math.max(...steps.map((s) => (s.description || "").length));
-    const idealBoxW = Math.max(maxLabel, maxDesc) + 2;
-    const arrowLen = ARROW_R.length;
-    const maxBoxW = Math.floor((MAX_WIDTH - (steps.length - 1) * arrowLen) / steps.length) - 2;
-    const MIN_BOXW = 12;
-    const maxStepsFit = (idealBoxW > maxBoxW || maxBoxW < MIN_BOXW)
-      ? Math.min(steps.length, Math.max(2, Math.floor((MAX_WIDTH - arrowLen) / (MIN_BOXW + 2 + arrowLen))))
-      : steps.length;
-    const cappedSteps = steps.slice(0, maxStepsFit);
-    const boxW = Math.max(MIN_BOXW, Math.min(idealBoxW, maxBoxW >= MIN_BOXW ? maxBoxW : Math.floor((MAX_WIDTH - (cappedSteps.length - 1) * arrowLen) / cappedSteps.length) - 2));
-    const arrowStr = ARROW_R;
-
-    const lines: string[] = [];
-    lines.push(title);
-    if (subtitle) lines.push("(" + subtitle + ")");
-    lines.push("");
-
-    const renderSteps = cappedSteps || steps;
-    let topRow = "";
-    let midRow = "";
-    let botRow = "";
-    for (let i = 0; i < renderSteps.length; i++) {
-      const s = renderSteps[i];
-      topRow += TL + H.repeat(boxW) + TR;
-      midRow += V + " " + pad(s.label, boxW - 2) + " " + V;
-      botRow += BL + H.repeat(boxW) + BR;
-      if (i < renderSteps.length - 1) {
-        topRow += arrowStr;
-        midRow += " " + "─".repeat(arrowStr.length - 3) + "► ";
-        botRow += arrowStr;
-      }
-    }
-    lines.push(topRow);
-    lines.push(midRow);
-
-    if (renderSteps.some((s: any) => s.description)) {
-      const descLines = renderSteps.map((s: any) => wrapText(s.description || "", boxW - 2));
-      const maxDescLines = Math.max(...descLines.map((dl: string[]) => dl.length));
-      for (let line = 0; line < maxDescLines; line++) {
-        let descRow = "";
-        for (let i = 0; i < renderSteps.length; i++) {
-          const text = line < descLines[i].length ? descLines[i][line] : "";
-          descRow += V + " " + pad(text, boxW - 2) + " " + V;
-          if (i < renderSteps.length - 1) {
-            descRow += " " + pad("", arrowStr.length - 2) + " ";
-          }
-        }
-        lines.push(descRow);
-      }
-      let descBotRow = "";
-      for (let i = 0; i < renderSteps.length; i++) {
-        descBotRow += BL + H.repeat(boxW) + BR;
-        if (i < renderSteps.length - 1) {
-          descBotRow += arrowStr;
-        }
-      }
-      lines.push(descBotRow);
-    } else {
-      lines.push(botRow);
-    }
-    return { content: [{ type: "text", text: lines.join("\n") }] };
-  }
-
-  if (type === "hierarchy") {
-    const root = params.root || "";
-    const children: { label: string; sub_items?: string[] }[] = params.children || [];
-
-    const lines: string[] = [];
-    lines.push(title);
-    if (subtitle) lines.push("(" + subtitle + ")");
-    lines.push("");
-
-    const rootW = Math.max(root.length + 2, 6);
-    lines.push("            " + TL + H.repeat(rootW) + TR);
-    lines.push("            " + V + " " + pad(root, rootW - 2) + " " + V);
-
-    if (children.length > 0) {
-      const indent = Math.max(2, Math.floor(rootW / 2));
-      lines.push(" ".repeat(indent) + BL + H.repeat(rootW) + BR);
-      lines.push("");
-      lines.push(" ".repeat(indent + Math.floor(rootW / 2) - 1) + V);
-
-      for (const child of children) {
-        const cW = Math.max(child.label.length + 2, (child.sub_items ? Math.max(...child.sub_items.map(s => s.length)) + 2 : 4));
-        const bar = TL + H.repeat(cW) + TR;
-        const mid = V + " " + pad(child.label, cW - 2) + " " + V;
-        const bot = BL + H.repeat(cW) + BR;
-        lines.push(" ".repeat(indent) + bar);
-        lines.push(" ".repeat(indent) + mid);
-        lines.push(" ".repeat(indent) + bot);
-
-        if (child.sub_items && child.sub_items.length > 0) {
-          const siW = Math.max(...child.sub_items.map(s => s.length)) + 2;
-          for (const si of child.sub_items) {
-            lines.push("    " + LM + H.repeat(siW) + RM);
-            lines.push("    " + V + " " + pad(si, siW - 2) + " " + V);
-            lines.push("    " + BL + H.repeat(siW) + BR);
-          }
-          lines.push("");
-        }
-      }
-    }
-    return { content: [{ type: "text", text: lines.join("\n") }] };
-  }
-
-  return { content: [{ type: "text", text: `[unknown diagram type: ${type}]` }] };
-}
-
 // ── Extension ──
 
 export default function (pi: ExtensionAPI) {
+  const data: BookDataAccess = createFileDataAccess();
+
   const state: BookQuestState = {
     active: false,
     currentBookSlug: null,
@@ -603,7 +251,7 @@ export default function (pi: ExtensionAPI) {
 
       if (trimmed.startsWith("switch ")) {
         const target = trimmed.slice(7).trim();
-        const books = getActiveBooks();
+        const books = data.getActiveBooks();
         const found = books.find(
           (b) => b.slug === target || b.title.toLowerCase().includes(target.toLowerCase())
         );
@@ -619,7 +267,6 @@ export default function (pi: ExtensionAPI) {
         state.active = true;
         state.currentBookSlug = found.slug;
         state.currentBookTitle = found.title;
-        // Reset gamification for fresh session
         Object.assign(game, freshGamificationEngine());
         stateSaveCounter = 0;
         if (ctx.hasUI) ctx.ui.notify(`📚 Switched to: ${found.title}`, "info");
@@ -630,13 +277,13 @@ export default function (pi: ExtensionAPI) {
       }
 
       if (trimmed === "books") {
-        const books = getActiveBooks();
+        const books = data.getActiveBooks();
         if (books.length === 0) {
           if (ctx.hasUI) ctx.ui.notify("📚 No books tracked yet. Use /bookquest add to start.", "info");
           return;
         }
         const lines = books.map((b) => {
-          const progress = loadProgress(b.slug);
+          const progress = data.loadBookProgress(b.slug);
           const ch = progress?.progress?.currentChapter || "?";
           const total = progress?.book?.totalChapters || "?";
           const xp = progress?.gamification?.xp || 0;
@@ -658,7 +305,7 @@ export default function (pi: ExtensionAPI) {
         state.active = true;
         Object.assign(game, freshGamificationEngine());
         stateSaveCounter = 0;
-        const books = getActiveBooks();
+        const books = data.getActiveBooks();
 
         if (books.length === 0) {
           if (ctx.hasUI) ctx.ui.notify("📚 BookQuest activated! Let's start a new book.", "info");
@@ -669,8 +316,7 @@ export default function (pi: ExtensionAPI) {
           const book = books[0];
           state.currentBookSlug = book.slug;
           state.currentBookTitle = book.title;
-          // Load current level into game engine
-          const progress = loadProgress(book.slug);
+          const progress = data.loadBookProgress(book.slug);
           game.lastLevel = progress?.gamification?.level || 1;
           if (ctx.hasUI) ctx.ui.notify(`📚 BookQuest activated! Continuing: ${book.title}`, "info");
           await pi.sendUserMessage(
@@ -679,7 +325,7 @@ export default function (pi: ExtensionAPI) {
         } else {
           const summary = books
             .map((b, i) => {
-              const p = loadProgress(b.slug);
+              const p = data.loadBookProgress(b.slug);
               const ch = p?.progress?.currentChapter || 1;
               const total = p?.book?.totalChapters || "?";
               const xp = p?.gamification?.xp || 0;
@@ -709,7 +355,7 @@ export default function (pi: ExtensionAPI) {
     updated += `\n\n## BookQuest Enforcement (auto-injected)\n${HARD_RULES_REMINDER}\n`;
 
     if (state.currentBookSlug) {
-      const progress = loadProgress(state.currentBookSlug);
+      const progress = data.loadBookProgress(state.currentBookSlug);
       // Capture baseline XP for delta detection in agent_end
       game.lastXp = progress?.gamification?.xp || 0;
       if (progress?.progress?.skillTree) {
@@ -729,63 +375,11 @@ export default function (pi: ExtensionAPI) {
       //  GAMIFICATION STATE INJECTION
       // ════════════════════════════════════════════════
 
-      const combo = getComboMultiplier(game.comboCount);
+      const registry = data.loadRegistry();
+      const challenge = registry ? data.pickDailyChallenge(registry) : null;
 
-      // Build combo visual
-      let comboVisual = `${combo.label} multiplier`;
-      if (game.comboCount >= 3) {
-        const flames = game.comboCount >= 10 ? "🔥🔥🔥" : game.comboCount >= 5 ? "🔥🔥" : "🔥";
-        comboVisual = `${combo.label} · ${combo.multiplier}x · ${flames}`;
-      }
-
-      let gamificationBlock = `\n## Active Gamification Bonuses (extension-managed)\n`;
-      gamificationBlock += `• Answer Streak: ${game.comboCount} correct → ${comboVisual}\n`;
-
-      if (game.pendingCritLabel) {
-        gamificationBlock += `• 💥 ${game.pendingCritLabel} loaded — next correct answer gets ${game.pendingCritMultiplier}x XP on top of combo!\n`;
-      }
-      if (game.pendingMysteryBox) {
-        gamificationBlock += `• 🎁 Mystery Box available — next correct answer unlocks bonus +${game.pendingMysteryBoxReward} XP!\n`;
-      }
-
-      // Streak shields (from registry)
-      const registry = getRegistry();
-      if (registry?.globalStats?.streakShields > 0) {
-        const shields = registry.globalStats.streakShields;
-        const shieldIcons = "🛡️".repeat(Math.min(shields, 5)) + (shields > 5 ? ` +${shields - 5}` : "");
-        gamificationBlock += `• Streak Shields: ${shieldIcons} (${shields} available — protects your streak if you miss a day)\n`;
-      }
-
-      if (registry?.globalStats?.streak?.current > 0) {
-        const streakDays = registry.globalStats.streak.current;
-        gamificationBlock += `• 🔥 Daily Streak: ${streakDays} day${streakDays > 1 ? "s" : ""}\n`;
-      }
-
-      // Daily challenge
-      if (registry) {
-        const today = todayStr();
-        const dc = registry.globalStats?.dailyChallenge || {};
-        if (dc.date !== today || !dc.completed) {
-          const challenge = pickDailyChallenge(registry);
-          if (challenge) {
-            gamificationBlock += `\n🌅 Daily Challenge (unlocked):\n`;
-            gamificationBlock += `   ${challenge.prompt}\n`;
-            gamificationBlock += `   Bonus: +${challenge.bonusXp} XP if completed this session!\n`;
-          }
-        } else {
-          gamificationBlock += `\n🌅 Daily Challenge: ✅ Completed today! Come back tomorrow for a new one.\n`;
-        }
-      }
-
-      // Level-up splash (recent)
-      if (game.hasNewLevelUp) {
-        const displayTitle = game.newMastery > 0
-          ? `${game.newLevelTitle} · Mastery ${game.newMastery}`
-          : `${game.newLevelTitle}`;
-        gamificationBlock += `\n${renderLevelUpSplash(game.newLevel, displayTitle, game.newMastery)}\n`;
-        game.hasNewLevelUp = false; // consume after one display
-      }
-
+      const gamificationBlock = buildGamificationBlock(game as GameState, registry, challenge);
+      game.hasNewLevelUp = false; // consume splash after one display
       updated += gamificationBlock;
 
       // Tutor mode rules
@@ -829,7 +423,7 @@ export default function (pi: ExtensionAPI) {
     if (!state.active || !state.currentBookSlug) return;
 
     // Reload progress from disk (LLM may have persisted XP via award_xp tool)
-    const progress = loadProgress(state.currentBookSlug);
+    const progress = data.loadBookProgress(state.currentBookSlug);
     if (!progress) return;
 
     // Validate level against XP
@@ -842,8 +436,6 @@ export default function (pi: ExtensionAPI) {
     }
 
     // ── Detect XP change → user answered a question ──
-    // Compare current XP (from disk, possibly updated via award_xp tool) against
-    // the pre-turn baseline captured in before_agent_start
     const currentXp = progress.gamification?.xp || 0;
     const xpDelta = currentXp - game.lastXp;
 
@@ -857,8 +449,6 @@ export default function (pi: ExtensionAPI) {
       // Roll for next critical hit (if none pending)
       if (!game.pendingCritLabel) {
         const roll = Math.random();
-        // Cumulative thresholds preserve intended probabilities:
-        // Legendary 1%, Rare 5%, Critical 20%
         const legendThreshold = LEGENDARY_CHANCE;
         const rareThreshold = LEGENDARY_CHANCE + RARE_CHANCE;
         const critThreshold = LEGENDARY_CHANCE + RARE_CHANCE + CRIT_CHANCE;
@@ -897,7 +487,7 @@ export default function (pi: ExtensionAPI) {
     game.lastLevel = computed.level;
     game.lastMastery = computed.mastery || 0;
 
-    saveProgress(state.currentBookSlug, progress);
+    data.saveBookProgress(state.currentBookSlug, progress);
   });
 
   // ═══════════════════════════════════════════
@@ -915,12 +505,10 @@ export default function (pi: ExtensionAPI) {
     // ── Wrong answer signal — LLM appends [BOOKQUEST ANSWER: wrong] ──
     const WRONG_ANSWER_MARKER = "[BOOKQUEST ANSWER: wrong]";
     if (content.includes(WRONG_ANSWER_MARKER)) {
-      // Reset combo
       game.comboCount = 0;
       const combo = getComboMultiplier(0);
       game.lastComboLabel = combo.label;
       game.lastComboMultiplier = combo.multiplier;
-      // Strip the marker from the content (don't show it to user)
       const cleaned = content.replace(WRONG_ANSWER_MARKER, "").replace(/\n{2,}/g, "\n").trim();
       return { message: { ...event.message, content: cleaned } };
     }
@@ -928,11 +516,11 @@ export default function (pi: ExtensionAPI) {
     // ── Daily challenge completion signal ──
     const DC_COMPLETE_MARKER = "[DAILY_CHALLENGE: done]";
     if (content.includes(DC_COMPLETE_MARKER)) {
-      const registry = getRegistry();
+      const registry = data.loadRegistry();
       if (registry?.globalStats?.dailyChallenge) {
-        registry.globalStats.dailyChallenge.date = todayStr();
+        registry.globalStats.dailyChallenge.date = data.todayStr();
         registry.globalStats.dailyChallenge.completed = true;
-        saveRegistry(registry);
+        data.saveRegistry(registry);
       }
       const cleaned = content.replace(DC_COMPLETE_MARKER, "").replace(/\n{2,}/g, "\n").trim();
       return { message: { ...event.message, content: cleaned } };
@@ -981,9 +569,8 @@ export default function (pi: ExtensionAPI) {
           state.active = true;
           state.currentBookSlug = saved.currentBookSlug || null;
           state.currentBookTitle = saved.currentBookTitle || null;
-          // Initialize lastLevel from saved progress to prevent false level-up splash
           if (saved.currentBookSlug) {
-            const savedProgress = loadProgress(saved.currentBookSlug);
+            const savedProgress = data.loadBookProgress(saved.currentBookSlug);
             if (savedProgress?.gamification?.level) {
               game.lastLevel = savedProgress.gamification.level;
               game.lastMastery = savedProgress.gamification.mastery || 0;
@@ -995,7 +582,7 @@ export default function (pi: ExtensionAPI) {
     }
 
     if (!ctx.hasUI) return;
-    const books = getActiveBooks().length;
+    const books = data.getActiveBooks().length;
     ctx.ui.notify(
       `📚 BookQuest extension loaded (${books} book${books !== 1 ? "s" : ""} tracked).\n` +
         `   Type /bookquest to start a reading session.`,
@@ -1014,23 +601,19 @@ export default function (pi: ExtensionAPI) {
     stateSaveCounter++;
 
     // ── Streak shield consumption ──
-    // Check if streak is about to break (2+ days gap)
-    const registry = getRegistry();
+    const registry = data.loadRegistry();
     if (registry?.globalStats?.streak) {
       const streak = registry.globalStats.streak;
       if (streak.lastSessionDate && streak.current > 0) {
         const last = new Date(streak.lastSessionDate);
-        const today = new Date(todayStr());
+        const today = new Date(data.todayStr());
         const gap = Math.floor((today.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
         if (gap >= 2 && (registry.globalStats.streakShields || 0) > 0) {
-          // Consume a shield to protect the streak
           registry.globalStats.streakShields--;
-          // Pretend last session was yesterday to preserve the streak
           const yesterday = new Date();
           yesterday.setDate(yesterday.getDate() - 1);
           streak.lastSessionDate = yesterday.toISOString().split("T")[0];
-          // Don't increment — just preserve
-          saveRegistry(registry);
+          data.saveRegistry(registry);
           ctx.ui?.notify?.(
             "🛡️ Streak Shield consumed! Your streak was protected while you were away.",
             "info"
@@ -1109,7 +692,7 @@ export default function (pi: ExtensionAPI) {
       if (!state.active || !state.currentBookSlug) {
         return `{"error": "No active book session"}`;
       }
-      const progress = loadProgress(state.currentBookSlug);
+      const progress = data.loadBookProgress(state.currentBookSlug);
       if (!progress) {
         return `{"error": "No progress file found"}`;
       }
@@ -1118,7 +701,7 @@ export default function (pi: ExtensionAPI) {
       }
       const amount = Math.max(1, Math.floor(params.amount));
       progress.gamification.xp = (progress.gamification.xp || 0) + amount;
-      saveProgress(state.currentBookSlug, progress);
+      data.saveBookProgress(state.currentBookSlug, progress);
       const total = progress.gamification.xp;
       return JSON.stringify({ awarded: amount, reason: params.reason, totalXp: total });
     },
