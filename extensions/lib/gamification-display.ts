@@ -22,7 +22,7 @@ export function buildComboVisual(
   return `${comboLabel} · ${multiplier}x · ${flames}`;
 }
 
-// ── Gamification state block ──
+// ── Types ──
 
 export interface GameState {
   comboCount: number;
@@ -36,12 +36,24 @@ export interface GameState {
   newLevel: number;
   newLevelTitle: string;
   newMastery: number;
+  /** XP bonus awarded when returning after a missed day */
+  comebackBonusXp: number;
+}
+
+/** Chapter and concept progress for the endowed progress display. */
+export interface ProgressState {
+  currentChapter: number;
+  totalChapters: number;
+  conceptsLearned: number;
+  totalConcepts: number;
 }
 
 export interface DailyChallenge {
   prompt: string;
   bonusXp: number;
 }
+
+// ── Gamification state block ──
 
 export function buildGamificationBlock(
   game: GameState,
@@ -53,6 +65,11 @@ export function buildGamificationBlock(
 
   let block = `\n## Active Gamification Bonuses (extension-managed)\n`;
   block += `• Answer Streak: ${game.comboCount} correct → ${comboVisual}\n`;
+
+  // Comeback bonus (shown on re-entry after a missed day)
+  if (game.comebackBonusXp > 0) {
+    block += `• 🔄 Comeback Bonus! +${game.comebackBonusXp} XP waiting — answer the next question to claim it!\n`;
+  }
 
   if (game.pendingCritLabel) {
     block += `• 💥 ${game.pendingCritLabel} loaded — next correct answer gets ${game.pendingCritMultiplier}x XP on top of combo!\n`;
@@ -98,6 +115,54 @@ export function buildGamificationBlock(
   }
 
   return block;
+}
+
+// ── Endowed progress display (#2) ──
+
+export function buildEndowedProgress(progress: ProgressState): string {
+  const { currentChapter, totalChapters, conceptsLearned, totalConcepts } = progress;
+  const chapterPct = Math.round((currentChapter / totalChapters) * 100);
+  const conceptPct = totalConcepts > 0 ? Math.round((conceptsLearned / totalConcepts) * 100) : 0;
+
+  // Build a simple ASCII progress bar (20 segments)
+  const barLen = 20;
+  const filled = Math.round((chapterPct / 100) * barLen);
+  const bar = "█".repeat(filled) + "░".repeat(Math.max(0, barLen - filled));
+
+  let out = `\n📊 Book Progress:\n`;
+  out += `   Chapter ${currentChapter}/${totalChapters} (${chapterPct}%) — ${bar}\n`;
+  if (totalConcepts > 0) {
+    out += `   Concepts learned: ${conceptsLearned}/${totalConcepts} (${conceptPct}%)\n`;
+  }
+  return out;
+}
+
+// ── Boss pre-ritual display (#5) ──
+
+export interface BossPreRitualState {
+  chapterNumber: number;
+  chapterTitle: string;
+  comboCount: number;
+  streakShields: number;
+  conceptsInChapter: number;
+}
+
+export function buildBossPreRitual(boss: BossPreRitualState): string {
+  const line = "─".repeat(40);
+  return [
+    "",
+    `⚔️ BOSS FIGHT APPROACHING — Chapter ${boss.chapterNumber}`,
+    `┌${line}┐`,
+    `│  ${boss.chapterTitle}`,
+    `│`,
+    `│  Review: ${boss.conceptsInChapter} concepts from this chapter`,
+    `│  🛡️ Streak Shields: ${boss.streakShields}`,
+    `│  ⚡ Combo streak: ${boss.comboCount}`,
+    `│`,
+    `│  Pass reward: +100 XP + 1 Streak Shield 🛡️`,
+    `└${line}┘`,
+    "",
+  ].join("\n");
 }
 
 // ── Level-up splash ──

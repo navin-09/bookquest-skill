@@ -292,6 +292,10 @@ Execute these in order. Adapt depth based on section complexity.
 - NEVER give direct answers. Redirect with questions.
 - Use question types: clarifying → probing → connecting → hypothetical.
 - Connect to **previous chapters explicitly**: *"Remember X from Chapter 2? How does this extend that?"*
+- **Award Synergy XP (#4):** When the user makes a meaningful cross-chapter connection in their answer (not just acknowledging the connection exists), call `award_xp` with:
+  - amount: 15
+  - reason: "cross-chapter connection"
+  Display it as: *"🔗 Cross-Chapter Connection! +15 Synergy XP — You see how B-Trees (Ch.3) connect to LSM-Trees (Ch.5)!"*
 - For concepts the user finds unfamiliar (stuck, vague answers), **switch to analogy-first.** Ask the user to create their own analogy: *"If you had to explain this to a non-tech friend, what real-world thing would you compare it to?"*
 - Offer **explain-to-persona** as a checkpoint: *"Now explain this concept to a 10-year-old in 2 sentences. No jargon."* See the [Explain-to-Persona section](#explain-to-persona-checkpoints).
 - See [TEACHING.md](TEACHING.md) for the full Socratic method.
@@ -453,6 +457,12 @@ The user can interrupt the tour at any point with these commands:
 
 When reaching a boss fight gate (end of a skill tree branch):
 
+The extension will automatically display a **Pre-Boss Ritual panel** showing: the chapter, concepts to review, streak shields available, and current combo streak. Before launching the boss fight:
+
+1. **Acknowledge the ritual** — *"You've mastered every concept in this chapter. The boss fight is the final test."
+2. **Offer a quick review** — *"Want to quickly revisit [concept that had lowest checkpoint score] before the fight?"* If yes, run 1-2 rapid-fire recall questions. If no, proceed.
+3. **Begin the boss fight** with the announcement below.
+
 Announce dramatically: *"⚔️ BOSS FIGHT UNLOCKED: [Topic]. Prove your mastery!"*
 
 Run a combination based on topic type:
@@ -494,8 +504,13 @@ When user types `/bookquest` to exit:
    ├── Achievements unlocked: [list]
    └── Next up: [next chapter]
    ```
-3. Update `registry.json` — Update global streak, global XP, and `lastActiveAt` for the book.
-4. If streak is active: *"See you tomorrow to keep your streak alive! 🔥"*
+3. **End with a curiosity gap (#1a):** Before saying goodbye, tease the next concept or chapter with a hook:
+   - ✅ *"You've mastered single-node storage. But what happens when 10,000 writes hit three servers at once? That's where Chapter 4 begins — and it breaks everything you just learned."
+   - ✅ *"You now understand B-Trees. Next, you'll see why sometimes you want to throw away the index entirely — and use a Hash Map instead."
+   - ❌ *"Goodbye! See you next time." (flat ending — no hook to return)
+4. Update `registry.json` — Update global streak, global XP, and `lastActiveAt` for the book.
+5. If streak is active: *"See you tomorrow to keep your streak alive! 🔥"*
+6. If the user completed a chapter this session: *"Chapter X complete! 🎉 You're Y% through the book. Take a moment — you've earned it."
 
 ## Progress File
 

@@ -36,8 +36,8 @@ import { fileURLToPath } from "url";
 import { createFileDataAccess } from "./lib/data-access.js";
 import type { BookDataAccess } from "./lib/data-access.js";
 import { renderDiagram } from "./lib/diagram-renderer.js";
-import { buildGamificationBlock } from "./lib/gamification-display.js";
-import type { GameState } from "./lib/gamification-display.js";
+import { buildGamificationBlock, buildEndowedProgress, buildBossPreRitual } from "./lib/gamification-display.js";
+import type { GameState, ProgressState, BossPreRitualState } from "./lib/gamification-display.js";
 
 // ── Helpers for path resolution ──
 const __filename = fileURLToPath(import.meta.url);
@@ -140,23 +140,32 @@ async function computeLevel(pi: ExtensionAPI, xp: number): Promise<any> {
   }
 }
 
-function renderSkillTree(tree: any[]): string {
+function renderSkillTree(tree: any[], bookTitle: string): string {
   if (!tree || !tree.length) return "  (no skill tree available)";
-  return tree
-    .map((node: any) => {
-      const icon =
-        node.isBossFight
-          ? "⚔️"
-          : node.status === "complete"
-          ? "✅"
-          : node.status === "in_progress"
-          ? "🔄"
-          : node.status === "unlocked"
-          ? "🔓"
-          : "🔒";
-      return `  ${icon} ${node.name}`;
-    })
-    .join("\n");
+
+  const statusIcon = (node: any): string => {
+    if (node.isBossFight) return "⚔️";
+    switch (node.status) {
+      case "complete": return "✅";
+      case "in_progress": return "🔄";
+      case "unlocked": return "🔓";
+      default: return "🔒";
+    }
+  };
+
+  const children = tree.map((node: any) => ({
+    label: `${statusIcon(node)} ${node.name}`,
+    sub_items: node.chapters?.map((ch: number) => `Ch.${ch}`) || undefined,
+  }));
+
+  const result = renderDiagram({
+    type: "hierarchy",
+    title: bookTitle,
+    root: "📚 Skill Tree",
+    children,
+  });
+
+  return result.content[0]?.text || "  (render error)";
 }
 
 // ── Combo Logic ──
@@ -195,6 +204,7 @@ interface GamificationEngine {
   newLevelTitle: string;
   newMastery: number;
   lastXp: number;                   // XP baseline captured before LLM turn (for delta detection)
+  comebackBonusXp: number;          // XP bonus for returning after a missed day
 }
 
 function freshGamificationEngine(): GamificationEngine {
@@ -213,6 +223,7 @@ function freshGamificationEngine(): GamificationEngine {
     newLevelTitle: "📖 Page Turner",
     newMastery: 0,
     lastXp: 0,
+    comebackBonusXp: 0,
   };
 }
 
@@ -359,17 +370,61 @@ export default function (pi: ExtensionAPI) {
       // Capture baseline XP for delta detection in agent_end
       game.lastXp = progress?.gamification?.xp || 0;
       if (progress?.progress?.skillTree) {
-        const tree = renderSkillTree(progress.progress.skillTree);
-        updated += `\n\n## Current Skill Tree: ${state.currentBookTitle}\n${tree}\n`;
+        const tree = renderSkillTree(progress.progress.skillTree, state.currentBookTitle || "");
+        updated += `\n\n## Current Skill Tree\n${tree}\n`;
       }
 
       const currCh = progress?.progress?.currentChapter || 1;
+      const totalCh = progress?.book?.totalChapters || currCh;
       const chapterEntry = progress?.progress?.completedChapters?.find(
         (c: any) => c.chapter === currCh
       );
       const mode = chapterEntry?.mode || progress?.book?.defaultMode || "independent";
       state.currentChapterMode = mode;
       updated += `\nCurrent chapter: ${currCh} (${mode} mode)\n`;
+
+      // ════════════════════════════════════════════════
+      //  ENDOWED PROGRESS (#2)
+      // ════════════════════════════════════════════════
+
+      const conceptsInChapter = progress?.knowledgeGraph?.filter(
+        (k: any) => k.chapter === currCh
+      ).length || 0;
+      const totalChapterConcepts = progress?.knowledgeGraph?.length || 0;
+      updated += buildEndowedProgress({
+        currentChapter: currCh,
+        totalChapters: totalCh,
+        conceptsLearned: conceptsInChapter,
+        totalConcepts: totalChapterConcepts,
+      });
+
+      // ════════════════════════════════════════════════
+      //  BOSS PRE-RITUAL (#5) — detect end of chapter
+      // ════════════════════════════════════════════════
+      // If the chapter's skill-tree branch has isBossFight=true for the next
+      // node, the user is approaching the boss fight. Check if all regular
+      // nodes up to the boss are complete or in_progress.
+      const treeNodes = progress?.progress?.skillTree || [];
+      const chapterBranches = treeNodes.filter((n: any) =>
+        !n.isBossFight && n.chapters?.includes(currCh)
+      );
+      const bossNode = treeNodes.find((n: any) =>
+        n.isBossFight && n.chapters?.includes(currCh)
+      );
+      const allChapterNodesDone = chapterBranches.every(
+        (n: any) => n.status === "complete"
+      );
+      if (bossNode && allChapterNodesDone && chapterBranches.length > 0) {
+        const registry = data.loadRegistry();
+        const shields = registry?.globalStats?.streakShields || 0;
+        updated += buildBossPreRitual({
+          chapterNumber: currCh,
+          chapterTitle: bossNode.name || `Chapter ${currCh}`,
+          comboCount: game.comboCount,
+          streakShields: shields,
+          conceptsInChapter: conceptsInChapter,
+        });
+      }
 
       // ════════════════════════════════════════════════
       //  GAMIFICATION STATE INJECTION
@@ -440,7 +495,16 @@ export default function (pi: ExtensionAPI) {
     const xpDelta = currentXp - game.lastXp;
 
     if (xpDelta > 0) {
-      // User got something correct — increment combo
+      // User got something correct — consume comeback bonus if active
+      if (game.comebackBonusXp > 0) {
+        if (!progress.gamification) {
+          progress.gamification = { xp: 0, level: 1, title: "📖 Page Turner", mastery: 0 };
+        }
+        progress.gamification.xp = (progress.gamification.xp || 0) + game.comebackBonusXp;
+        game.comebackBonusXp = 0;
+      }
+
+      // Increment combo
       game.comboCount++;
       const combo = getComboMultiplier(game.comboCount);
       game.lastComboLabel = combo.label;
@@ -578,6 +642,17 @@ export default function (pi: ExtensionAPI) {
           }
         }
         break;
+      }
+    }
+
+    // ── Detect gap → set comeback bonus (#3) ──
+    const registry = data.loadRegistry();
+    if (registry?.globalStats?.streak?.lastSessionDate) {
+      const last = new Date(registry.globalStats.streak.lastSessionDate);
+      const today = new Date(data.todayStr());
+      const gap = Math.floor((today.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
+      if (gap >= 2) {
+        game.comebackBonusXp = 10;
       }
     }
 
