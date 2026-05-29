@@ -592,6 +592,22 @@ export default function (pi: ExtensionAPI) {
 
     // ── Handle roadmap patterns in tutor mode ──
     if (state.currentChapterMode === "tutor") {
+        // ── Shared helper: apply regex patterns and check for matches ──
+        function applyPatternReplacements(
+          text: string,
+          patterns: RegExp[],
+          replacement: string
+        ): { cleaned: string; matched: boolean } {
+          let cleaned = text;
+          let matched = false;
+          for (const pattern of patterns) {
+            const before = cleaned;
+            cleaned = cleaned.replace(pattern, replacement);
+            if (cleaned !== before) matched = true;
+          }
+          return { cleaned, matched };
+        }
+
         const ROADMAP_PATTERNS = [
           /^\s*Next up\s*[—–-]\s*page(?:s)?\s+\d+(?:[-–]\d+)?[^\n]*:?\s*/gim,
           /^\s*Next\s*[—–-]\s*page(?:s)?\s+\d+(?:[-–]\d+)?[^\n]*:?\s*/gim,
@@ -599,17 +615,11 @@ export default function (pi: ExtensionAPI) {
           /^\s*(?:Let me log (?:the concepts|this|that).*|Time to move on.*|Moving right along.*)\s*/gim,
         ];
 
-        let cleaned = content;
-        let matched = false;
-        for (const pattern of ROADMAP_PATTERNS) {
-          const before = cleaned;
-          cleaned = cleaned.replace(pattern, "");
-          if (cleaned !== before) matched = true;
-        }
-        cleaned = cleaned.replace(/^\n+/, "");
+        const { cleaned: cleanedRoadmap, matched: roadmapMatch } = applyPatternReplacements(content, ROADMAP_PATTERNS, "");
+        const cleaned = cleanedRoadmap.replace(/^\n+/, "");
 
-        if (matched && cleaned !== content) {
-          pi.sendUserMessage(
+        if (roadmapMatch && cleaned !== content) {
+          await pi.sendUserMessage(
             "[BookQuest correction] You presented a concept roadmap or multi-chunk preview. " +
             "In tutor mode, teach ONE concept chunk at a time. " +
             "Do not announce pages or preview what's coming next. " +
@@ -621,7 +631,11 @@ export default function (pi: ExtensionAPI) {
         // ── Post-answer summarization detection ──
         // Catches summary framing the LLM adds AFTER answering a checkpoint
         // (e.g., "The mental model is...", "In other words...", "Essentially...")
-        // that does the thinking for the user instead of letting them digest.
+        // that does the thinking for the user instead of letting them sit with it.
+        //
+        // Each pattern matches a sentence that frames/wraps up a teaching point.
+        // Convention: start-of-line (^\s*), matching phrase, then colon (:) followed
+        // by any content. To add a new pattern, add a regex following this form.
         const SUMMARY_FRAMING_PATTERNS = [
           /^\s*The mental model[^\n]*:.*/gm,
           /^\s*The key insight[^\n]*:.*/gm,
@@ -631,27 +645,22 @@ export default function (pi: ExtensionAPI) {
           /^\s*The (?:real |fundamental |core )?difference[^\n]*:.*/gm,
           /^\s*The takeaway[^\n]*:.*/gm,
           /^\s*What this means[^\n]*:.*/gm,
-          /^\s*(?:So |Thus )?(?:the idea is|the concept is|what we've learned is|what matters is)[^\n]*:.*/gm,
+          // Case-insensitive so "The idea is" and "the idea is" both match
+          /^\s*(?:So |Thus )?(?:the idea is|the concept is|what we've learned is|what matters is)[^\n]*:.*/gim,
         ];
 
-        let cleaned2 = cleaned;
-        let summaryMatch = false;
-        for (const pattern of SUMMARY_FRAMING_PATTERNS) {
-          const before = cleaned2;
-          cleaned2 = cleaned2.replace(pattern, "[📖 digested by agent — removed summary]");
-          if (cleaned2 !== before) summaryMatch = true;
-        }
+        const { cleaned: cleanedSummary, matched: summaryMatch } = applyPatternReplacements(cleaned, SUMMARY_FRAMING_PATTERNS, "");
 
         if (summaryMatch) {
-          pi.sendUserMessage(
+          await pi.sendUserMessage(
             "[BookQuest correction] You added a summary after the teaching/checkpoint. " +
             "Summaries do the thinking for the user. " +
             "After teaching a concept and checking understanding, either ask a follow-up " +
             "or move to the next chunk. Never wrap up with framing like 'the mental model is...' " +
             "or 'in other words...'. Let the user's own understanding be the summary."
           );
-          if (cleaned2 !== content) {
-            return { message: { ...event.message, content: cleaned2 } };
+          if (cleanedSummary !== content) {
+            return { message: { ...event.message, content: cleanedSummary } };
           }
         }
       }
