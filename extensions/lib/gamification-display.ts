@@ -63,55 +63,46 @@ export function buildGamificationBlock(
 ): string {
   const comboVisual = buildComboVisual(game.comboCount, game.lastComboLabel, game.lastComboMultiplier);
 
-  let block = `\n## Active Gamification Bonuses (extension-managed)\n`;
-  block += `• Answer Streak: ${game.comboCount} correct → ${comboVisual}\n`;
+  let block = `\n## Active Bonuses\n`;
+  block += `• Streak: ${game.comboCount} → ${comboVisual}\n`;
 
-  // Comeback bonus (shown on re-entry after a missed day)
   if (game.comebackBonusXp > 0) {
-    block += `• 🔄 Comeback Bonus! +${game.comebackBonusXp} XP waiting — answer the next question to claim it!\n`;
+    block += `• 🔄 Comeback: +${game.comebackBonusXp} XP on next correct answer!\n`;
   }
 
   if (game.pendingCritLabel) {
-    block += `• 💥 ${game.pendingCritLabel} loaded — next correct answer gets ${game.pendingCritMultiplier}x XP on top of combo!\n`;
+    block += `• 💥 ${game.pendingCritLabel}: ${game.pendingCritMultiplier}x next!\n`;
   }
   if (game.pendingMysteryBox) {
-    block += `• 🎁 Mystery Box available — next correct answer unlocks bonus +${game.pendingMysteryBoxReward} XP!\n`;
+    block += `• 🎁 Mystery Box: +${game.pendingMysteryBoxReward} XP next!\n`;
   }
 
-  // Streak shields
   if (registry?.globalStats?.streakShields > 0) {
-    const shields = registry.globalStats.streakShields;
-    const shieldIcons = "🛡️".repeat(Math.min(shields, 5)) + (shields > 5 ? ` +${shields - 5}` : "");
-    block += `• Streak Shields: ${shieldIcons} (${shields} available — protects your streak if you miss a day)\n`;
+    const n = registry.globalStats.streakShields;
+    block += `• 🛡️ Shields: ${n}\n`;
   }
 
-  // Daily streak
   if (registry?.globalStats?.streak?.current > 0) {
-    const streakDays = registry.globalStats.streak.current;
-    block += `• 🔥 Daily Streak: ${streakDays} day${streakDays > 1 ? "s" : ""}\n`;
+    block += `• 🔥 Streak: ${registry.globalStats.streak.current}d\n`;
   }
 
-  // Daily challenge
   if (registry) {
     const today = todayStr ?? new Date().toISOString().split("T")[0];
     const dc = registry.globalStats?.dailyChallenge || {};
     if (dc.date !== today || !dc.completed) {
       if (challenge) {
-        block += `\n🌅 Daily Challenge (unlocked):\n`;
-        block += `   ${challenge.prompt}\n`;
-        block += `   Bonus: +${challenge.bonusXp} XP if completed this session!\n`;
+        block += `\n🌅 Daily: ${challenge.prompt} (+${challenge.bonusXp} XP this session)\n`;
       }
     } else {
-      block += `\n🌅 Daily Challenge: ✅ Completed today! Come back tomorrow for a new one.\n`;
+      block += `\n🌅 Daily: ✅ Done today\n`;
     }
   }
 
-  // Level-up splash
   if (game.hasNewLevelUp) {
-    const displayTitle = game.newMastery > 0
+    const t = game.newMastery > 0
       ? `${game.newLevelTitle} · Mastery ${game.newMastery}`
       : `${game.newLevelTitle}`;
-    block += `\n${renderLevelUpSplash(game.newLevel, displayTitle, game.newMastery)}\n`;
+    block += `\n${renderLevelUpSplash(game.newLevel, t, game.newMastery)}\n`;
   }
 
   return block;
@@ -120,21 +111,14 @@ export function buildGamificationBlock(
 // ── Endowed progress display (#2) ──
 
 export function buildEndowedProgress(progress: ProgressState): string {
-  const { currentChapter, totalChapters, conceptsLearned, totalConcepts } = progress;
-  const chapterPct = Math.round((currentChapter / totalChapters) * 100);
-  const conceptPct = totalConcepts > 0 ? Math.round((conceptsLearned / totalConcepts) * 100) : 0;
-
-  // Build a simple ASCII progress bar (20 segments)
-  const barLen = 20;
-  const filled = Math.round((chapterPct / 100) * barLen);
-  const bar = "█".repeat(filled) + "░".repeat(Math.max(0, barLen - filled));
-
-  let out = `\n📊 Book Progress:\n`;
-  out += `   Chapter ${currentChapter}/${totalChapters} (${chapterPct}%) — ${bar}\n`;
-  if (totalConcepts > 0) {
-    out += `   Concepts learned: ${conceptsLearned}/${totalConcepts} (${conceptPct}%)\n`;
+  const pct = Math.round((progress.currentChapter / progress.totalChapters) * 100);
+  const bar = "█".repeat(Math.round(pct / 5)) + "░".repeat(20 - Math.round(pct / 5));
+  let out = `\n📊 ${progress.currentChapter}/${progress.totalChapters} (${pct}%) ${bar}`;
+  if (progress.totalConcepts > 0) {
+    const c = Math.round((progress.conceptsLearned / progress.totalConcepts) * 100);
+    out += ` · ${c}% concepts`;
   }
-  return out;
+  return out + `\n`;
 }
 
 // ── Boss pre-ritual display (#5) ──

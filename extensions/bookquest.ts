@@ -69,13 +69,11 @@ const MYSTERY_BOX_MAX_XP = 25;
 // ── Hard rules reminder injected every turn ──
 const HARD_RULES_REMINDER = `
 [BOOKQUEST HARD RULES — enforced by extension]
-• Save progress after EVERY interaction — extension auto-saves on agent_end
-• Level calculations MUST use \`node scripts/level-calc.js <xp>\` — extension validates
-• NEVER summarize content — not in independent mode, not in tutor mode
-• In independent mode: give reading missions (page range + questions), NOT summaries
-• In tutor mode: teach ONE chunk at a time with a check between each — NEVER present a concept roadmap/outline
-• ALWAYS run end-of-chapter quiz + challenge before unlocking next chapter
-• ALWAYS present the skill tree at session start
+• Save progress every turn — extension auto-saves on agent_end
+• Validate levels via \`scripts/level-calc.js <xp>\` — extension checks
+• NEVER summarize — reading missions (independent) or teach chunk-by-chunk (tutor)
+• Run end-of-chapter quiz + challenge before unlocking next chapter
+• Skill tree shown at session start
 `.trim();
 
 // ── Compute level (calls external script, falls back) ──
@@ -439,31 +437,22 @@ export default function (pi: ExtensionAPI) {
 
       // Tutor mode rules
       if (mode === "tutor") {
-        updated += `\n⚠️ TUTOR MODE — CRITICAL RULES:\n` +
-          `• Teach ONE concept chunk at a time — never two in sequence without a checkpoint between them\n` +
-          `• NEVER present a concept roadmap/outline of what you're about to teach\n` +
-          `• After reading the book, DO NOT say "this chapter covers X, Y, and Z" — start teaching the first chunk directly\n` +
-          `• The user discovers each concept one at a time — don't preview them all upfront\n` +
-          `• Each chunk = teach (2-3 sentences for familiar concepts, 4-5 for analogy-first) + check (specific question)\n` +
-          `• If the user says "just summarize it", respond: "Let me teach it to you instead."\n` +
-          `• When the user answers correctly, call the award_xp tool with the base XP amount, then move to the next chunk\n` +
-          `• ALWAYS connect new content to at least one concept from a prior chapter\n` +
-          `\n📊 VISUAL-FIRST RULE (user learns faster with visuals):\n` +
-          `• For EVERY concept chunk, include a diagram — either from the book or generated via render_diagram\n` +
-          `• FIRST check if the book source has a relevant figure/diagram — reference it by page or figure number\n` +
-          `• If no book diagram, use the render_diagram tool\n` +
-          `• ALWAYS use flow diagrams by default. Comparison tables only for explicit trade-off comparisons.\n` +
-          `• Flow: simple inline boxes with arrows showing how something works step by step.\n` +
-          `• Comparison: ONLY when comparing 2 specific approaches side-by-side (e.g., B-Tree vs LSM-Tree).\n` +
-          `• The diagram should be the FIRST thing the user sees for that chunk — before the verbal explanation\n` +
-          `• Keep diagram labels SHORT (3-5 words max) — details go in your verbal explanation, not the diagram\n` +
-          `• Keep diagrams focused — one concept per diagram, max 5 rows or 4 steps\n` +
-          `• Title the diagram with the ANALOGY name (e.g., \'The Organized Pantry\'). Technical term goes inside the diagram as a label\n`;
+        updated += `\n⚠️ TUTOR MODE RULES:\n` +
+          `• One chunk at a time: teach (2-3 sentences) → check → next. Never two in sequence.\n` +
+          `• Never present a roadmap/outline of what you're about to teach. Start the first chunk directly.\n` +
+          `• If the user says "just summarize", respond: "Let me teach it to you instead."\n` +
+          `• Correct answer → call award_xp with base amount, then move to next chunk. No extra explanation.\n` +
+          `• Connect new content to at least one prior chapter concept.\n` +
+          `\n📊 VISUAL-FIRST:\n` +
+          `• Every chunk needs a diagram. Prefer book figures; otherwise use render_diagram tool.\n` +
+          `• Default to flow diagram. Comparison only for side-by-side trade-offs.\n` +
+          `• Diagram comes first — before verbal explanation.\n` +
+          `• Labels SHORT (3-5 words). Title with analogy name, put technical term inside.\n`;
       } else {
-        updated += `\n⚠️ INDEPENDENT MODE — CRITICAL RULES:\n` +
-          `• NEVER read the book content to the user — give a reading mission (page range + questions) and wait\n` +
-          `• NEVER summarize what pages cover — just point to the range and set questions\n` +
-          `• If the user says "just summarize it", respond: "Summaries create the illusion of learning."\n`;
+        updated += `\n⚠️ INDEPENDENT MODE RULES:\n` +
+          `• Give a reading mission (page range + questions). Never read content to the user.\n` +
+          `• Never summarize what pages cover — just point to the range and set questions.\n` +
+          `• If the user says "just summarize it": "Summaries create the illusion of learning."\n`;
       }
     }
 
