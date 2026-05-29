@@ -33,11 +33,11 @@ import { Type } from "typebox";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
-import { createFileDataAccess } from "./data-access.js";
-import type { BookDataAccess } from "./data-access.js";
-import { renderDiagram } from "./diagram-renderer.js";
-import { buildGamificationBlock } from "./gamification-display.js";
-import type { GameState } from "./gamification-display.js";
+import { createFileDataAccess } from "./lib/data-access.js";
+import type { BookDataAccess } from "./lib/data-access.js";
+import { renderDiagram } from "./lib/diagram-renderer.js";
+import { buildGamificationBlock } from "./lib/gamification-display.js";
+import type { GameState } from "./lib/gamification-display.js";
 
 // ── Helpers for path resolution ──
 const __filename = fileURLToPath(import.meta.url);
