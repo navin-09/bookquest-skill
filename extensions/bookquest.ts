@@ -19,7 +19,6 @@
  *   ✅ Inject current skill tree into system prompt every turn
  *   ✅ Track activation state across the session
  *   ✅ Remind the LLM of hard rules every turn to prevent drift
- *   ✅ render_diagram — custom tool for perfectly-aligned Unicode diagrams
  *   ✅ Visual-first teaching rule injected into system prompt
  *   ✅ Book diagram references (prefer book figures over generated diagrams)
  *   ✅ Gamification state injected every turn
@@ -444,7 +443,7 @@ export default function (pi: ExtensionAPI) {
           `• Correct answer → call award_xp with base amount, then move to next chunk. No extra explanation.\n` +
           `• Connect new content to at least one prior chapter concept.\n` +
           `\n📊 VISUAL-FIRST:\n` +
-          `• Every chunk needs a diagram. Prefer book figures; otherwise use render_diagram tool.\n` +
+          `• Every chunk needs a diagram. Prefer book figures; otherwise draw one with Unicode box-drawing characters.\n` +
           `• Default to flow diagram. Comparison only for side-by-side trade-offs.\n` +
           `• Diagram comes first — before verbal explanation.\n` +
           `• Labels SHORT (3-5 words). Title with analogy name, put technical term inside.\n`;
@@ -740,48 +739,6 @@ export default function (pi: ExtensionAPI) {
         currentBookTitle: state.currentBookTitle,
       });
     }
-  });
-
-  // ═══════════════════════════════════════════
-  //  7. render_diagram — Custom tool
-  // ═══════════════════════════════════════════
-
-  pi.registerTool({
-    name: "render_diagram",
-    label: "Render Diagram",
-    description: `Draw a SIMPLE inline diagram for a concept. Keep ALL labels SHORT (3-5 words). ` +
-      `The diagram is a visual skeleton — explain details verbally. ` +
-      `Use flow for processes/steps, comparison for side-by-side trade-offs, hierarchy for trees.`,
-    promptSnippet: "render_diagram(type=\"flow\"|\"comparison\"|\"hierarchy\") — SIMPLE inline diagram. Keep labels 3-5 words max",
-    parameters: Type.Object({
-      type: Type.Union([
-        Type.Literal("flow"),
-        Type.Literal("comparison"),
-        Type.Literal("hierarchy"),
-      ], { description: "Diagram type: flow (DEFAULT — horizontal steps, use this 90% of the time), comparison (side-by-side table, only for explicit trade-offs), hierarchy (tree)" }),
-      title: Type.String({ description: "Diagram title — use the ANALOGY name (e.g., 'The Organized Pantry'). Technical term goes in subtitle or inside the diagram" }),
-      subtitle: Type.Optional(Type.String({ description: "Optional one-line subtitle, e.g., the analogy name" })),
-      steps: Type.Optional(Type.Array(Type.Object({
-        label: Type.String({ description: "Step name, 3-5 words max. Example: 'Leader Election'. NOT: 'The system elects a leader through voting'" }),
-        description: Type.Optional(Type.String({ description: "Optional one-liner, 5-8 words max. Again, details go in the verbal explanation, not the diagram." })),
-      }), { description: "(flow only) Flow steps. Keep labels SHORT (3-5 words). The verbal explanation provides all details." })),
-      left_label: Type.Optional(Type.String({ description: "(comparison only) Left column heading, SHORT (3-5 words)" })),
-      right_label: Type.Optional(Type.String({ description: "(comparison only) Right column heading, SHORT (3-5 words)" })),
-      rows: Type.Optional(Type.Array(Type.Object({
-        aspect: Type.String({ description: "Row label, SHORT — 3-5 words, e.g., 'Read speed' not 'How fast data can be retrieved'" }),
-        left: Type.String({ description: "Cell content, 3-5 words max. Details go in verbal explanation." }),
-        right: Type.String({ description: "Cell content, 3-5 words max. Details go in verbal explanation." }),
-      }), { description: "(comparison only) Rows. Keep aspect/labels SHORT — details go in verbal explanation. Max 5 rows." })),
-      root: Type.Optional(Type.String({ description: "(hierarchy only) Root node label, SHORT (3-5 words)" })),
-      children: Type.Optional(Type.Array(Type.Object({
-        label: Type.String({ description: "Child node label, SHORT (3-5 words)" }),
-        sub_items: Type.Optional(Type.Array(Type.String(), { description: "Sub-items under this child, SHORT (3-5 words each)" })),
-      }), { description: "(hierarchy only) Child nodes under the root, max 6 children" })),
-    }),
-    execute: async (toolCallId, params) => {
-      const result = renderDiagram(params);
-      return result.content?.[0]?.text ?? "[diagram error]";
-    },
   });
 
   // ═══════════════════════════════════════════

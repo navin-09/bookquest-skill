@@ -349,8 +349,8 @@ For each concept chunk in the chapter:
 - **Announce the page range** before teaching: *"We're on pages 54-57."* For non-PDF sources (no page numbers), announce the section boundary instead: *"We're on the subsection on LSM-Trees."*
 
 **Step 2 — Teach**
-- **VISUAL FIRST: Before any text, include a diagram.** The user learns faster with visuals. Use the `render_diagram` tool (registered by the extension) to generate a perfectly-aligned Unicode box-drawing diagram. The diagram comes BEFORE the verbal explanation.
-  - ✅ *Call render_diagram tool with the concept first, then explain*
+- **VISUAL FIRST: Before any text, include a diagram.** The user learns faster with visuals. Draw a simple Unicode box-drawing diagram (using ┌ ─ ┐ │ └ ┘ characters). The diagram comes BEFORE the verbal explanation.
+  - ✅ *Draw the diagram first with flow or comparison boxes, then explain*
   - ❌ *Write paragraphs first, then add a diagram at the end*
 - **Check for book diagrams**: If the book source has a relevant figure/diagram on the current pages, reference it by page number. *"See Figure 3.2 on page 55 — that's a B-Tree in action."*
 - **PREFER flow diagrams** over comparison tables — flow diagrams are simpler, fit the screen better, and work inline with teaching. Use comparison tables ONLY for side-by-side trade-offs (B-Tree vs LSM-Tree).

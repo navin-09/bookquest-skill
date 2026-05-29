@@ -77,12 +77,12 @@ _Avoid_: Asking the user to fill out a "what do you know" form; treating all con
 The default assumption on first session: every concept is `unknown`. Analogy-first is mandatory. The agent adjusts based on the user's behavior (skip commands + quiz performance), not self-declarations.
 
 **Visual-First Teaching**:
-The rule that every concept chunk must include a diagram before any verbal explanation. The diagram IS the visual form of the analogy — titled with the analogy name (not the technical term). The technical term goes inside the diagram as a label. Flow: diagram (analogy title) → verbal analogy bridge → introduce technical term → persona check. The agent first checks if the book source has a relevant figure; if not, uses `render_diagram` tool.
+The rule that every concept chunk must include a diagram before any verbal explanation. The diagram IS the visual form of the analogy — titled with the analogy name (not the technical term). The technical term goes inside the diagram as a label. Flow: diagram (analogy title) → verbal analogy bridge → introduce technical term → persona check. The agent first checks if the book source has a relevant figure; if not, draws one inline using Unicode box-drawing characters (┌ ─ ┐ │ └ ┘).
 _Avoid_: Writing paragraphs first and adding a diagram at the end; titling the diagram with the technical term (defeats analogy-first)
 
-**render_diagram Tool**:
-A custom tool registered by the BookQuest extension. Generates properly-aligned Unicode box-drawing diagrams. Auto-detects terminal width and fills the full screen. Supports three types: flow (step-by-step), comparison (side-by-side), hierarchy (trees). Comparison tables and flow descriptions support multi-line word wrapping — long content wraps at word boundaries within column widths.
-_Avoid_: Hand-crafted ASCII diagrams (alignment is unreliable)
+**Inline Diagram**:
+The agent draws simple flow/comparison/hierarchy diagrams using Unicode box-drawing characters (┌ ─ ┐ │ └ ┘) directly in chat. Previously a custom tool (`render_diagram`), now removed due to a framework rendering incompatibility. The `diagram-renderer.ts` module remains for internal use (skill tree rendering).
+_Avoid_: Hand-crafted ASCII diagrams with inconsistent alignment
 
 **Different Lens (🪟)**:
 An optional one-sentence alternative perspective on a concept offered after the user responds to a checkpoint. Gives a different angle — industrial vs startup use, historical evolution, real-world trade-off between two implementations. Marked with 🪟. Keeps the user hooked by showing the concept isn't a one-dimensional fact.
