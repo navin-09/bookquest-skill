@@ -443,7 +443,7 @@ export default function (pi: ExtensionAPI) {
           `• Correct answer → call award_xp with base amount, then move to next chunk. No extra explanation.\n` +
           `• Connect new content to at least one prior chapter concept.\n` +
           `\n📊 VISUAL-FIRST:\n` +
-          `• Every chunk needs a diagram. Prefer book figures; otherwise draw one with Unicode box-drawing characters.\n` +
+          `• Every chunk needs a diagram. Prefer book figures; otherwise draw one with Unicode box-drawing characters (┌ ─ ┐ │ └ ┘).\n` +
           `• Default to flow diagram. Comparison only for side-by-side trade-offs.\n` +
           `• Diagram comes first — before verbal explanation.\n` +
           `• Labels SHORT (3-5 words). Title with analogy name, put technical term inside.\n`;

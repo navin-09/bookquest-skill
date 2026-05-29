@@ -81,7 +81,7 @@ The rule that every concept chunk must include a diagram before any verbal expla
 _Avoid_: Writing paragraphs first and adding a diagram at the end; titling the diagram with the technical term (defeats analogy-first)
 
 **Inline Diagram**:
-The agent draws simple flow/comparison/hierarchy diagrams using Unicode box-drawing characters (┌ ─ ┐ │ └ ┘) directly in chat. Previously a custom tool (`render_diagram`), now removed due to a framework rendering incompatibility. The `diagram-renderer.ts` module remains for internal use (skill tree rendering).
+The agent draws simple flow/comparison/hierarchy diagrams using Unicode box-drawing characters (┌ ─ ┐ │ └ ┘) directly in chat. These replace a book figure when one is unavailable.
 _Avoid_: Hand-crafted ASCII diagrams with inconsistent alignment
 
 **Different Lens (🪟)**:
